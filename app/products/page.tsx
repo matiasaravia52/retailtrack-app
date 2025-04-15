@@ -32,6 +32,17 @@ export default function Products() {
     { id: '5', name: 'Auriculares Bluetooth', sku: 'AU-005', category: 'Audio', price: 59.99, stock: 12 },
   ];
 
+  // Definir el tipo para nuestros productos
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  type Product = {
+    id: string;
+    name: string;
+    sku: string;
+    category: string;
+    price: number;
+    stock: number;
+  };
+
   // Columnas para la tabla de productos
   const columns = [
     { key: 'name', header: 'Nombre' },
@@ -40,7 +51,12 @@ export default function Products() {
     { 
       key: 'price', 
       header: 'Precio',
-      render: (value: number) => `$${value.toFixed(2)}`
+      render: (value: unknown) => {
+        if (typeof value === 'number') {
+          return `$${value.toFixed(2)}`;
+        }
+        return String(value);
+      }
     },
     { key: 'stock', header: 'Stock' },
   ];

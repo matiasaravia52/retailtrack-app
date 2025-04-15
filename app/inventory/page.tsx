@@ -30,6 +30,16 @@ export default function Inventory() {
     { id: '5', name: 'Auriculares Bluetooth', sku: 'AU-005', stock: 2, minStock: 5, lastMovement: '11/04/2025' },
   ];
 
+  // Definir el tipo para nuestros items de inventario
+  type InventoryItem = {
+    id: string;
+    name: string;
+    sku: string;
+    stock: number;
+    minStock: number;
+    lastMovement: string;
+  };
+
   // Columnas para la tabla de inventario
   const columns = [
     { key: 'name', header: 'Producto' },
@@ -37,11 +47,14 @@ export default function Inventory() {
     { 
       key: 'stock', 
       header: 'Stock Actual',
-      render: (value: number, item: any) => (
-        <span className={value < item.minStock ? styles.lowStock : styles.goodStock}>
-          {value}
-        </span>
-      )
+      render: (value: unknown, item: InventoryItem) => {
+        const stockValue = typeof value === 'number' ? value : 0;
+        return (
+          <span className={stockValue < item.minStock ? styles.lowStock : styles.goodStock}>
+            {stockValue}
+          </span>
+        );
+      }
     },
     { key: 'minStock', header: 'Stock Mínimo' },
     { key: 'lastMovement', header: 'Último Movimiento' },

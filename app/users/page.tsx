@@ -38,6 +38,16 @@ export default function Users() {
     { id: 'employee', name: 'Empleado' },
   ];
 
+  // Definir el tipo para nuestros usuarios
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  type User = {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    lastLogin: string;
+  };
+
   // Columnas para la tabla de usuarios
   const columns = [
     { key: 'name', header: 'Nombre' },
@@ -45,11 +55,12 @@ export default function Users() {
     { 
       key: 'role', 
       header: 'Rol',
-      render: (value: string) => {
+      render: (value: unknown) => {
         let roleClass = '';
         let roleName = '';
+        const roleValue = typeof value === 'string' ? value : '';
         
-        switch (value) {
+        switch (roleValue) {
           case 'admin':
             roleClass = styles.admin;
             roleName = 'Administrador';
@@ -63,7 +74,7 @@ export default function Users() {
             roleName = 'Empleado';
             break;
           default:
-            roleName = value;
+            roleName = roleValue;
         }
         
         return (

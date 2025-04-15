@@ -5,7 +5,8 @@ import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Table from '@/components/Table';
-import Input from '@/components/Input';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import Input, { Select } from '@/components/Input';
 import styles from './page.module.css';
 
 export default function Sales() {
@@ -46,6 +47,17 @@ export default function Sales() {
     { id: '5', name: 'Auriculares Bluetooth', price: 59.99, stock: 12 },
   ];
 
+  // Definir el tipo para nuestras ventas
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  type Sale = {
+    id: string;
+    date: string;
+    customer: string;
+    total: number;
+    items: number;
+    status: string;
+  };
+
   // Columnas para la tabla de ventas
   const columns = [
     { key: 'date', header: 'Fecha' },
@@ -53,7 +65,12 @@ export default function Sales() {
     { 
       key: 'total', 
       header: 'Total',
-      render: (value: number) => `$${value.toFixed(2)}`
+      render: (value: unknown) => {
+        if (typeof value === 'number') {
+          return `$${value.toFixed(2)}`;
+        }
+        return String(value);
+      }
     },
     { key: 'items', header: 'Productos' },
     { key: 'status', header: 'Estado' },
