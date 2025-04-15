@@ -6,6 +6,7 @@ import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input from '@/components/Input';
+import ImageUpload from '@/components/ImageUpload';
 import styles from './page.module.css';
 
 export default function Products() {
@@ -20,20 +21,24 @@ export default function Products() {
     price: '',
     stock: '',
     sku: '',
-    category: ''
+    category: '',
+    image: null as string | null,
+    imageFile: null as File | null
   });
 
-  // Datos de ejemplo para los productos
-  const products = [
-    { id: '1', name: 'Laptop HP 15"', sku: 'LP-001', category: 'Electrónicos', price: 799.99, stock: 15 },
-    { id: '2', name: 'Monitor Dell 24"', sku: 'MN-002', category: 'Electrónicos', price: 249.99, stock: 8 },
-    { id: '3', name: 'Teclado Mecánico', sku: 'KB-003', category: 'Accesorios', price: 89.99, stock: 20 },
-    { id: '4', name: 'Mouse Inalámbrico', sku: 'MS-004', category: 'Accesorios', price: 29.99, stock: 25 },
-    { id: '5', name: 'Auriculares Bluetooth', sku: 'AU-005', category: 'Audio', price: 59.99, stock: 12 },
+  // Datos iniciales de ejemplo para los productos
+  const initialProducts: Product[] = [
+    { id: '1', name: 'Laptop HP 15"', sku: 'LP-001', category: 'Electrónicos', price: 799.99, stock: 15, image: 'https://placehold.co/300x200?text=Laptop' },
+    { id: '2', name: 'Monitor Dell 24"', sku: 'MN-002', category: 'Electrónicos', price: 249.99, stock: 8, image: 'https://placehold.co/300x200?text=Monitor' },
+    { id: '3', name: 'Teclado Mecánico', sku: 'KB-003', category: 'Accesorios', price: 89.99, stock: 20, image: 'https://placehold.co/300x200?text=Teclado' },
+    { id: '4', name: 'Mouse Inalámbrico', sku: 'MS-004', category: 'Accesorios', price: 29.99, stock: 25, image: 'https://placehold.co/300x200?text=Mouse' },
+    { id: '5', name: 'Auriculares Bluetooth', sku: 'AU-005', category: 'Audio', price: 59.99, stock: 12, image: 'https://placehold.co/300x200?text=Auriculares' },
   ];
+  
+  // Estado para almacenar la lista de productos
+  const [products, setProducts] = useState<Product[]>(initialProducts);
 
   // Definir el tipo para nuestros productos
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   type Product = {
     id: string;
     name: string;
@@ -41,10 +46,25 @@ export default function Products() {
     category: string;
     price: number;
     stock: number;
+    image: string | null;
   };
 
   // Columnas para la tabla de productos
   const columns = [
+    { 
+      key: 'image', 
+      header: 'Imagen',
+      render: (value: unknown, item: any) => {
+        if (typeof value === 'string') {
+          return (
+            <div className={styles.productImage}>
+              <img src={value} alt={item.name} />
+            </div>
+          );
+        }
+        return null;
+      }
+    },
     { key: 'name', header: 'Nombre' },
     { key: 'sku', header: 'SKU' },
     { key: 'category', header: 'Categoría' },
@@ -69,20 +89,52 @@ export default function Products() {
       [name]: value
     });
   };
+  
+  // Función para manejar la carga de imágenes
+  const handleImageChange = (file: File | null, preview: string | null) => {
+    setProductForm({
+      ...productForm,
+      imageFile: file,
+      image: preview
+    });
+  };
 
   // Función para manejar el envío del formulario
   const handleSubmit = () => {
-    console.log('Producto a guardar:', productForm);
-    // Aquí iría la lógica para guardar el producto
-    setShowForm(false);
+    // Validar campos obligatorios
+    if (!productForm.name || !productForm.sku || !productForm.price || !productForm.stock) {
+      alert('Por favor complete todos los campos obligatorios');
+      return;
+    }
+    
+    // Crear un nuevo producto con los datos del formulario
+    const newProduct: Product = {
+      id: Date.now().toString(), // Generar un ID único basado en la fecha
+      name: productForm.name,
+      sku: productForm.sku,
+      category: productForm.category,
+      price: parseFloat(productForm.price),
+      stock: parseInt(productForm.stock),
+      image: productForm.image
+    };
+    
+    // Agregar el nuevo producto a la lista
+    setProducts([...products, newProduct]);
+    
+    console.log('Producto guardado:', newProduct);
+    
+    // Limpiar el formulario y ocultarlo
     setProductForm({
       name: '',
       description: '',
       price: '',
       stock: '',
       sku: '',
-      category: ''
+      category: '',
+      image: null,
+      imageFile: null
     });
+    setShowForm(false);
   };
 
   // Función para manejar el envío del formulario desde el evento submit
@@ -155,6 +207,12 @@ export default function Products() {
               value={productForm.category} 
               onChange={handleInputChange} 
               required 
+            />
+            
+            <ImageUpload
+              label="Imagen del producto"
+              value={productForm.image}
+              onChange={handleImageChange}
             />
             <Input 
               label="Descripción" 
