@@ -42,20 +42,33 @@ const Input: React.FC<InputProps> = ({
   );
 };
 
+// Interfaz para las opciones del select
+interface SelectOption {
+  id: string;
+  name: string;
+}
+
 // Componente Select para usar con las clases CSS específicas
-export const Select: React.FC<SelectHTMLAttributes<HTMLSelectElement> & { label: string; error?: string }> = ({
+export const Select: React.FC<SelectHTMLAttributes<HTMLSelectElement> & { 
+  label?: string; 
+  error?: string;
+  options?: SelectOption[];
+}> = ({
   label,
   error,
   id,
   className,
   children,
+  options,
   ...props
 }) => {
   return (
     <div className={styles.formGroup}>
-      <label htmlFor={id} className={styles.label}>
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={id} className={styles.label}>
+          {label}
+        </label>
+      )}
       <select
         id={id}
         className={`${styles.input} ${styles.selectInput} ${error ? styles.inputError : ''} ${
@@ -63,7 +76,15 @@ export const Select: React.FC<SelectHTMLAttributes<HTMLSelectElement> & { label:
         }`}
         {...props}
       >
-        {children}
+        {options ? (
+          options.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.name}
+            </option>
+          ))
+        ) : (
+          children
+        )}
       </select>
       {error && <p className={styles.error}>{error}</p>}
     </div>

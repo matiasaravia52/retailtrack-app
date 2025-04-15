@@ -1,7 +1,9 @@
 'use client';
 
 import React, { ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from '../Navbar';
+import { useAuth } from '@/context/AuthContext';
 import styles from './DashboardLayout.module.css';
 
 interface DashboardLayoutProps {
@@ -15,15 +17,23 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   title,
   actions,
 }) => {
-  // Esta función sería implementada cuando tengamos la autenticación
+  const { user, logout } = useAuth();
+  const router = useRouter();
+  
+  // Manejar el cierre de sesión
   const handleLogout = () => {
-    console.log('Logout clicked');
-    // Aquí iría la lógica de cierre de sesión
+    logout();
+    router.push('/');
   };
+
+  // Si no hay usuario autenticado, no renderizar el layout
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className={styles.container}>
-      <Navbar userName="Usuario" onLogout={handleLogout} />
+      <Navbar onLogout={handleLogout} />
       <main className={styles.main}>
         <header className={styles.header}>
           <h1 className={styles.title}>{title}</h1>
