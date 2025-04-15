@@ -39,3 +39,38 @@ a {
 button {
   cursor: pointer;
 }
+
+/* Estilos para formularios */
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Mejoras para dispositivos móviles */
+@media (max-width: 768px) {
+  input[type="checkbox"],
+  input[type="radio"] {
+    transform: scale(1.1);
+    margin-right: 0.5rem;
+  }
+  
+  select {
+    padding-right: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  input[type="checkbox"],
+  input[type="radio"] {
+    transform: scale(1.2);
+  }
+  
+  select,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"] {
+    font-size: 16px; /* Previene el zoom en iOS */
+  }
+}

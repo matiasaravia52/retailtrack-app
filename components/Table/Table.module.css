@@ -1,0 +1,99 @@
+.tableContainer {
+  width: 100%;
+  overflow-x: auto;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  -webkit-overflow-scrolling: touch; /* Mejora el desplazamiento en iOS */
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px; /* Asegura que la tabla tenga un ancho mínimo para evitar que se comprima demasiado */
+}
+
+.tableHeader {
+  background-color: #f9fafb;
+  text-align: left;
+}
+
+.tableHeaderCell {
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tableRow:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.tableRow:hover {
+  background-color: #f3f4f6;
+}
+
+.tableCell {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap; /* Evita que el texto se rompa en varias líneas */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Muestra ... cuando el texto es demasiado largo */
+  max-width: 200px; /* Limita el ancho máximo de las celdas */
+}
+
+@media (max-width: 768px) {
+  .tableContainer {
+    border-radius: 4px;
+    margin: 0 -1rem; /* Extiende la tabla al ancho completo en móviles */
+    width: calc(100% + 2rem);
+  }
+  
+  .tableHeaderCell, .tableCell {
+    padding: 0.5rem 0.75rem; /* Reduce el padding en móviles */
+  }
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.paginationInfo {
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+.paginationControls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.paginationButton {
+  padding: 0.25rem 0.5rem;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.paginationButton:hover {
+  background-color: #f3f4f6;
+}
+
+.paginationButton:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.noData {
+  padding: 2rem;
+  text-align: center;
+  color: #6b7280;
+}

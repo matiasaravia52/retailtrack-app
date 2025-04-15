@@ -27,10 +27,34 @@
 
 @media (max-width: 768px) {
   .main {
-    padding: 2rem;
+    padding: 2rem 1.5rem;
+  }
+  
+  .center h1 {
+    font-size: 1.75rem;
+  }
+  
+  .center p {
+    font-size: 1rem;
   }
   
   .buttons {
     flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 1.5rem 1rem;
+  }
+  
+  .center h1 {
+    font-size: 1.5rem;
+  }
+  
+  .center p {
+    font-size: 0.9rem;
   }
 }

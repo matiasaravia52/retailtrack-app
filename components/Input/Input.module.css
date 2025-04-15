@@ -1,0 +1,85 @@
+.formGroup {
+  margin-bottom: 1rem;
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #1a1a2e;
+}
+
+.error {
+  color: #e53e3e;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.inputError {
+  border-color: #e53e3e;
+}
+
+.inputError:focus {
+  border-color: #e53e3e;
+}
+
+.checkboxInput {
+  width: auto;
+  margin-right: 0.5rem;
+}
+
+.radioInput {
+  width: auto;
+  margin-right: 0.5rem;
+}
+
+.selectInput {
+  padding-right: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .formGroup {
+    margin-bottom: 0.75rem;
+  }
+  
+  .label {
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+  }
+  
+  .input {
+    padding: 0.6rem;
+    font-size: 0.95rem;
+  }
+  
+  .checkboxInput,
+  .radioInput {
+    transform: scale(1.1);
+  }
+}
+
+@media (max-width: 480px) {
+  .formGroup {
+    margin-bottom: 0.6rem;
+  }
+  
+  .input {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    border-radius: 3px;
+  }
+}
