@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
@@ -54,11 +55,17 @@ export default function Products() {
     { 
       key: 'image', 
       header: 'Imagen',
-      render: (value: unknown, item: any) => {
+      render: (value: unknown, item: Product) => {
         if (typeof value === 'string') {
           return (
             <div className={styles.productImage}>
-              <img src={value} alt={item.name} />
+              <Image 
+                src={value} 
+                alt={item.name} 
+                width={60} 
+                height={60} 
+                style={{ objectFit: 'contain' }}
+              />
             </div>
           );
         }

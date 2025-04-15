@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, ChangeEvent } from 'react';
+import Image from 'next/image';
 import styles from './ImageUpload.module.css';
 import Button from '@/components/Button';
 
@@ -80,7 +81,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       <div className={styles.uploadArea}>
         {preview ? (
           <div className={styles.previewContainer}>
-            <img src={preview} alt="Vista previa" className={styles.preview} />
+            <Image 
+              src={preview} 
+              alt="Vista previa" 
+              className={styles.preview}
+              width={300}
+              height={200}
+              style={{ objectFit: 'contain', maxHeight: '300px' }}
+            />
             <button 
               type="button" 
               className={styles.removeButton} 
