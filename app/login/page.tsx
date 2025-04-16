@@ -72,10 +72,10 @@ export default function Login() {
       <div className={styles.loginCard}>
         <div className={styles.logoContainer}>
           <Image 
-            src="/logo.png" 
+            src="/images/retailtrack-icon.png" 
             alt="RetailTrack Logo" 
-            width={180} 
-            height={60} 
+            width={150} 
+            height={150} 
             priority
           />
         </div>
