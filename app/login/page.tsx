@@ -3,32 +3,32 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { authService, LoginCredentials } from '@/services/authService';
+import { LoginCredentials } from '@/services/authService';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import styles from './page.module.css';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Login() {
+  const { user, isAuthenticated, loading, login } = useAuth();
   const router = useRouter();
   const [credentials, setCredentials] = useState<LoginCredentials>({
     email: '',
     password: ''
   });
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
   // Check if user is already logged in
   useEffect(() => {
-    if (authService.isLoggedIn()) {
-      const user = authService.getCurrentUser();
-      // Redirect based on user role
-      if (user?.role === 'employee') {
+    if (loading) return;
+
+    if (isAuthenticated && user) {
+      if (user.role === 'employee') {
         router.push('/sales');
       } else {
         router.push('/dashboard');
       }
     }
-  }, [router]);
+  }, [router, isAuthenticated, user, loading]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -48,13 +48,10 @@ export default function Login() {
     }
     
     try {
-      setLoading(true);
       setError(null);
-      
-      const response = await authService.login(credentials);
-      
+      await login(credentials);
       // Redirect based on user role
-      if (response.user.role === 'employee') {
+      if (user?.role === 'employee') {
         router.push('/sales');
       } else {
         router.push('/dashboard');
@@ -67,8 +64,6 @@ export default function Login() {
         console.error('Login error:', err);
         setError('Error al iniciar sesión. Verifique sus credenciales.');
       }
-    } finally {
-      setLoading(false);
     }
   };
 
