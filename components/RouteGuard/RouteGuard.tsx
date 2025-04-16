@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuth, UserRole } from '@/context/AuthContext';
+import { useAuth, UserRole } from '@/contexts/AuthContext';
 
 // Definir los permisos de acceso según el rol
 const rolePermissions: Record<UserRole, string[]> = {
@@ -16,9 +16,10 @@ const publicPages = ['/', '/login'];
 
 interface RouteGuardProps {
   children: React.ReactNode;
+  allowedRoles?: ('admin' | 'manager' | 'employee')[];
 }
 
-const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
+const RouteGuard: React.FC<RouteGuardProps> = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -29,12 +30,23 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
       return;
     }
 
-    // Si no está autenticado, redirigir a la página de inicio
+    // Si no está autenticado, redirigir a la página de login
     if (!isAuthenticated) {
-      router.push('/');
+      router.push('/login');
       return;
     }
 
+    // Si hay roles permitidos especificados y el usuario no tiene uno de esos roles, redirigir
+    if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+      // Redirigir según el rol del usuario
+      if (user.role === 'employee') {
+        router.push('/sales');
+      } else {
+        router.push('/dashboard');
+      }
+      return;
+    }
+    
     // Si está autenticado, verificar si tiene permiso para acceder a la página
     if (user && !hasPermission(user.role, pathname)) {
       // Redirigir a la primera página permitida según su rol
@@ -46,7 +58,7 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
         router.push('/');
       }
     }
-  }, [isAuthenticated, pathname, router, user]);
+  }, [isAuthenticated, pathname, router, user, allowedRoles]);
 
   // Función para verificar si el rol tiene permiso para acceder a la ruta
   const hasPermission = (role: UserRole, path: string): boolean => {

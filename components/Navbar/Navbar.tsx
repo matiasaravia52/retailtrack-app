@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth, UserRole } from '@/context/AuthContext';
+import { useAuth, UserRole } from '@/contexts/AuthContext';
 import styles from './Navbar.module.css';
 
 interface NavbarProps {

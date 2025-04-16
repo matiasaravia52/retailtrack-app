@@ -3,7 +3,7 @@
 import React, { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '../Navbar';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import styles from './DashboardLayout.module.css';
 
 interface DashboardLayoutProps {

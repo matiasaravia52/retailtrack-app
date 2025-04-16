@@ -4,9 +4,10 @@ import React from 'react';
 import DashboardLayout from '@/components/Layout';
 import Card from '@/components/Card';
 import Table from '@/components/Table';
+import RouteGuard from '@/components/RouteGuard/index';
 import styles from './page.module.css';
 
-export default function Dashboard() {
+function Dashboard() {
   // Datos de ejemplo para las tarjetas del dashboard
   const dashboardCards = [
     { id: 1, label: 'Productos', value: '120' },
@@ -33,28 +34,32 @@ export default function Dashboard() {
   ];
 
   return (
-    <DashboardLayout title="Dashboard">
-      <div className={styles.dashboard}>
-        {dashboardCards.map((card) => (
-          <Card key={card.id} className={styles.card}>
-            <div className={styles.cardContent}>
-              <div className={styles.value}>{card.value}</div>
-              <div className={styles.label}>{card.label}</div>
-            </div>
-          </Card>
-        ))}
-      </div>
+    <RouteGuard allowedRoles={['admin', 'manager']}>
+      <DashboardLayout title="Dashboard">
+        <div className={styles.dashboard}>
+          {dashboardCards.map((card) => (
+            <Card key={card.id} className={styles.card}>
+              <div className={styles.cardContent}>
+                <div className={styles.value}>{card.value}</div>
+                <div className={styles.label}>{card.label}</div>
+              </div>
+            </Card>
+          ))}
+        </div>
 
-      <div className={styles.recentActivity}>
-        <Card title="Actividad Reciente">
-          <Table
-            columns={columns}
-            data={recentActivity}
-            keyExtractor={(item) => item.id}
-            onRowClick={(item) => console.log('Clicked:', item)}
-          />
-        </Card>
-      </div>
-    </DashboardLayout>
+        <div className={styles.recentActivity}>
+          <Card title="Actividad Reciente">
+            <Table
+              columns={columns}
+              data={recentActivity}
+              keyExtractor={(item) => item.id}
+              onRowClick={(item) => console.log('Clicked:', item)}
+            />
+          </Card>
+        </div>
+      </DashboardLayout>
+    </RouteGuard>
   );
 }
+
+export default Dashboard;

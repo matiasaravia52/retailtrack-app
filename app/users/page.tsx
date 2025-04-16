@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input, { Select } from '@/components/Input';
+import RouteGuard from '@/components/RouteGuard/index';
+import { userService, User as UserType, CreateUserData } from '@/services/userService';
 import styles from './page.module.css';
 
-export default function Users() {
+function Users() {
   // Estado para controlar la visualización del formulario
   const [showForm, setShowForm] = useState(false);
   // Estado para el término de búsqueda
@@ -19,34 +21,40 @@ export default function Users() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: ''
+    role: 'employee'
   });
+  // Estado para los usuarios
+  const [users, setUsers] = useState<UserType[]>([]);
+  // Estado para indicar carga
+  const [loading, setLoading] = useState(true);
+  // Estado para manejar errores
+  const [error, setError] = useState<string | null>(null);
 
-  // Datos de ejemplo para los usuarios
-  const users = [
-    { id: '1', name: 'Admin Usuario', email: 'admin@retailtrack.com', role: 'admin', lastLogin: '15/04/2025 10:30' },
-    { id: '2', name: 'Gerente Ejemplo', email: 'gerente@retailtrack.com', role: 'manager', lastLogin: '15/04/2025 09:15' },
-    { id: '3', name: 'Empleado Uno', email: 'empleado1@retailtrack.com', role: 'employee', lastLogin: '14/04/2025 16:45' },
-    { id: '4', name: 'Empleado Dos', email: 'empleado2@retailtrack.com', role: 'employee', lastLogin: '14/04/2025 14:20' },
-    { id: '5', name: 'Gerente Dos', email: 'gerente2@retailtrack.com', role: 'manager', lastLogin: '13/04/2025 11:10' },
-  ];
+  // Cargar usuarios al montar el componente
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const data = await userService.getUsers();
+        setUsers(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setError('Error al cargar usuarios. Inténtelo de nuevo más tarde.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Datos de ejemplo para los roles
+    fetchUsers();
+  }, []);
+
+  // Datos para los roles
   const roles = [
     { id: 'admin', name: 'Administrador' },
     { id: 'manager', name: 'Gerente' },
     { id: 'employee', name: 'Empleado' },
   ];
-
-  // Definir el tipo para nuestros usuarios
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  type User = {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    lastLogin: string;
-  };
 
   // Columnas para la tabla de usuarios
   const columns = [
@@ -97,23 +105,49 @@ export default function Users() {
   };
 
   // Función para manejar el envío del formulario
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validar que las contraseñas coincidan
     if (userForm.password !== userForm.confirmPassword) {
       alert('Las contraseñas no coinciden');
       return;
     }
     
-    console.log('Usuario a guardar:', userForm);
-    // Aquí iría la lógica para guardar el usuario
-    setShowForm(false);
-    setUserForm({
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: ''
-    });
+    try {
+      setLoading(true);
+      // Crear objeto con los datos del usuario
+      const userData: CreateUserData = {
+        name: userForm.name,
+        email: userForm.email,
+        password: userForm.password,
+        role: userForm.role as 'admin' | 'manager' | 'employee'
+      };
+      
+      // Llamar al servicio para crear el usuario
+      const newUser = await userService.createUser(userData);
+      
+      // Actualizar la lista de usuarios
+      setUsers(prevUsers => [...prevUsers, newUser]);
+      
+      // Resetear el formulario
+      setShowForm(false);
+      setUserForm({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'employee'
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error('Error creating user:', err);
+        setError(err.message || 'Error al crear usuario');
+      } else {
+        console.error('Error creating user:', err);
+        setError('Error al iniciar sesión. Verifique sus credenciales.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Función para manejar el envío del formulario desde el evento submit
@@ -122,20 +156,50 @@ export default function Users() {
     handleSubmit();
   };
 
-  // Filtrar usuarios según el término de búsqueda
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Función para buscar usuarios
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      // Si el término de búsqueda está vacío, cargar todos los usuarios
+      try {
+        setLoading(true);
+        const data = await userService.getUsers();
+        setUsers(data);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setError('Error al cargar usuarios');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const data = await userService.searchUsers(searchTerm);
+      setUsers(data);
+    } catch (err) {
+      console.error('Error searching users:', err);
+      setError('Error al buscar usuarios');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Formatear fecha de último login
+  const formatLastLogin = (dateString: string | null) => {
+    if (!dateString) return 'Nunca';
+    const date = new Date(dateString);
+    return date.toLocaleString('es-ES');
+  };
 
   return (
-    <DashboardLayout 
-      title="Usuarios" 
-      actions={
-        <Button onClick={() => setShowForm(true)}>Nuevo Usuario</Button>
-      }
-    >
+    <RouteGuard allowedRoles={['admin']}>
+      <DashboardLayout 
+        title="Usuarios" 
+        actions={
+          <Button onClick={() => setShowForm(true)}>Nuevo Usuario</Button>
+        }
+      >
       {showForm ? (
         <Card title="Nuevo Usuario" footer={
           <>
@@ -200,27 +264,43 @@ export default function Users() {
         <>
           <div className={styles.header}>
             <div className={styles.searchContainer}>
-              <input 
-                type="text" 
-                placeholder="Buscar usuarios..." 
-                className={styles.searchInput} 
+              <Input
+                label="Buscar"
+                id="search"
+                name="search"
+                placeholder="Buscar por nombre, email o rol"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              <Button onClick={handleSearch} variant="secondary">Buscar</Button>
             </div>
           </div>
-
-          <Card>
-            <Table 
-              columns={columns} 
-              data={filteredUsers} 
-              keyExtractor={(item) => item.id} 
-              onRowClick={(item) => console.log('Usuario seleccionado:', item)}
-              emptyMessage="No se encontraron usuarios"
-            />
-          </Card>
+          
+          {loading ? (
+            <div className={styles.loading}>Cargando usuarios...</div>
+          ) : error ? (
+            <div className={styles.error}>{error}</div>
+          ) : users.length === 0 ? (
+            <div className={styles.empty}>No se encontraron usuarios</div>
+          ) : (
+            <Card>
+              <Table
+                columns={columns}
+                data={users.map(user => ({
+                  ...user,
+                  lastLogin: formatLastLogin(user.lastLogin)
+                }))}
+                keyExtractor={(item: UserType) => item.id}
+                onRowClick={(item: UserType) => console.log('Usuario seleccionado:', item)}
+                emptyMessage="No se encontraron usuarios"
+              />
+            </Card>
+          )}
         </>
       )}
-    </DashboardLayout>
+      </DashboardLayout>
+    </RouteGuard>
   );
 }
+
+export default Users;

@@ -20,3 +20,20 @@
 .secondary:hover {
   background-color: #27ae60;
 }
+
+.danger {
+  background-color: #e74c3c;
+}
+
+.danger:hover {
+  background-color: #c0392b;
+}
+
+.button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.button:disabled:hover {
+  background-color: #95a5a6;
+}
