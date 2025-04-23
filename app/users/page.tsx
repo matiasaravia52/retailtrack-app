@@ -7,7 +7,10 @@ import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input, { Select } from '@/components/Input';
 import RouteGuard from '@/components/RouteGuard/index';
+import PermissionGuard from '@/components/PermissionGuard';
 import { userService, User as UserType, CreateUserData } from '@/services/userService';
+import { roleService } from '@/services/roleService';
+import { Role } from '@/types/auth';
 import styles from './page.module.css';
 
 function Users() {
@@ -21,8 +24,11 @@ function Users() {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'employee'
+    roleId: ''
   });
+  
+  // Estado para los roles disponibles
+  const [roles, setRoles] = useState<Role[]>([]);
   // Estado para los usuarios
   const [users, setUsers] = useState<UserType[]>([]);
   // Estado para indicar carga
@@ -49,12 +55,41 @@ function Users() {
     fetchUsers();
   }, []);
 
-  // Datos para los roles
-  const roles = [
-    { id: 'admin', name: 'Administrador' },
-    { id: 'manager', name: 'Gerente' },
-    { id: 'employee', name: 'Empleado' },
-  ];
+  // Cargar roles disponibles
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const data = await roleService.getRoles();
+        setRoles(data);
+      } catch (err) {
+        console.error('Error fetching roles:', err);
+        setError('Error al cargar roles');
+      }
+    };
+
+    fetchRoles();
+  }, []);
+
+  // Función para eliminar un usuario
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('¿Está seguro que desea eliminar este usuario? Esta acción no se puede deshacer.')) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      await userService.deleteUser(userId);
+      
+      // Actualizar la lista de usuarios eliminando el usuario borrado
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+      setError(null);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError('Error al eliminar el usuario');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Columnas para la tabla de usuarios
   const columns = [
@@ -93,6 +128,26 @@ function Users() {
       }
     },
     { key: 'lastLogin', header: 'Último Acceso' },
+    { 
+      key: 'actions', 
+      header: 'Acciones',
+      render: (_: unknown, item: UserType) => (
+        <div className={styles.actions}>
+          <PermissionGuard permission="users:delete">
+            <button 
+              className={styles.deleteButton} 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteUser(item.id);
+              }}
+              aria-label="Eliminar usuario"
+            >
+              Eliminar
+            </button>
+          </PermissionGuard>
+        </div>
+      )
+    },
   ];
 
   // Función para manejar cambios en el formulario
@@ -112,21 +167,30 @@ function Users() {
       return;
     }
     
+    // Validar que se haya seleccionado un rol
+    if (!userForm.roleId) {
+      alert('Debe seleccionar un rol para el usuario');
+      return;
+    }
+    
     try {
       setLoading(true);
       // Crear objeto con los datos del usuario
       const userData: CreateUserData = {
         name: userForm.name,
         email: userForm.email,
-        password: userForm.password,
-        role: userForm.role as 'admin' | 'manager' | 'employee'
+        password: userForm.password
       };
       
       // Llamar al servicio para crear el usuario
       const newUser = await userService.createUser(userData);
       
-      // Actualizar la lista de usuarios
-      setUsers(prevUsers => [...prevUsers, newUser]);
+      // Asignar el rol seleccionado al usuario
+      await roleService.assignRoleToUser(newUser.id, userForm.roleId);
+      
+      // Recargar la lista de usuarios para obtener los datos actualizados
+      const updatedUsers = await userService.getUsers();
+      setUsers(updatedUsers);
       
       // Resetear el formulario
       setShowForm(false);
@@ -135,15 +199,17 @@ function Users() {
         email: '',
         password: '',
         confirmPassword: '',
-        role: 'employee'
+        roleId: ''
       });
+      
+      setError(null);
     } catch (err: unknown) {
       if (err instanceof Error) {
         console.error('Error creating user:', err);
         setError(err.message || 'Error al crear usuario');
       } else {
         console.error('Error creating user:', err);
-        setError('Error al iniciar sesión. Verifique sus credenciales.');
+        setError('Error al crear usuario. Inténtelo de nuevo.');
       }
     } finally {
       setLoading(false);
@@ -193,11 +259,13 @@ function Users() {
   };
 
   return (
-    <RouteGuard allowedRoles={['admin']}>
+    <RouteGuard allowedRoles={['admin', 'manager']}>
       <DashboardLayout 
         title="Usuarios" 
         actions={
-          <Button onClick={() => setShowForm(true)}>Nuevo Usuario</Button>
+          <PermissionGuard permission="users:create">
+            <Button onClick={() => setShowForm(true)}>Nuevo Usuario</Button>
+          </PermissionGuard>
         }
       >
       {showForm ? (
@@ -245,9 +313,9 @@ function Users() {
             />
             <Select
               label="Rol"
-              id="role"
-              name="role"
-              value={userForm.role}
+              id="roleId"
+              name="roleId"
+              value={userForm.roleId}
               onChange={handleInputChange}
               required
             >

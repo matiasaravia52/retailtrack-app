@@ -1,0 +1,52 @@
+.pageDescription {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+}
+
+.actionButton {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actionButton:hover {
+  background-color: #1d4ed8;
+}
+
+.actionButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+}
+
+.emptyMessage {
+  text-align: center;
+  padding: 2rem 0;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.loadingMessage {
+  text-align: center;
+  padding: 2rem 0;
+  font-size: 1rem;
+}
+
+.errorMessage {
+  background-color: #fee2e2;
+  border: 1px solid #f87171;
+  color: #b91c1c;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  margin-bottom: 1.5rem;
+}

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import styles from './Navbar.module.css';
 
 interface NavbarProps {
@@ -11,36 +11,51 @@ interface NavbarProps {
   onLogout?: () => void;
 }
 
-// Definir los enlaces permitidos según el rol
-const roleNavLinks: Record<UserRole, Array<{ name: string; path: string }>> = {
-  admin: [
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Productos', path: '/products' },
-    { name: 'Categorías', path: '/categories' },
-    { name: 'Inventario', path: '/inventory' },
-    { name: 'Ventas', path: '/sales' },
-    { name: 'Usuarios', path: '/users' },
-  ],
-  manager: [
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Productos', path: '/products' },
-    { name: 'Categorías', path: '/categories' },
-    { name: 'Inventario', path: '/inventory' },
-    { name: 'Ventas', path: '/sales' },
-  ],
-  employee: [
-    { name: 'Productos', path: '/products' },
-    { name: 'Ventas', path: '/sales' },
-  ],
-};
+// Definir los enlaces disponibles
+const allNavLinks = [
+  { name: 'Dashboard', path: '/dashboard', requiredPermission: 'dashboard:view' },
+  { name: 'Productos', path: '/products', requiredPermission: 'products:view' },
+  { name: 'Categorías', path: '/categories', requiredPermission: 'categories:view' },
+  { name: 'Inventario', path: '/inventory', requiredPermission: 'inventory:view' },
+  { name: 'Ventas', path: '/sales', requiredPermission: 'sales:view' },
+  { name: 'Usuarios', path: '/users', requiredPermission: 'users:view' },
+  { name: 'Roles y Permisos', path: '/admin/roles', requiredPermission: 'roles:manage' },
+];
 
 const Navbar: React.FC<NavbarProps> = ({ userName, onLogout }) => {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
 
-  // Determinar los enlaces de navegación según el rol del usuario
-  const navLinks = user ? roleNavLinks[user.role] : [];
+  // Determinar los enlaces de navegación según los permisos del usuario
+  const [navLinks, setNavLinks] = useState<Array<{ name: string; path: string }>>([]);
+  
+  // Cargar los enlaces de navegación basados en los permisos del usuario
+  React.useEffect(() => {
+    const loadNavLinks = async () => {
+      if (!user) {
+        setNavLinks([]);
+        return;
+      }
+      
+      // Si el usuario tiene roles, filtrar los enlaces según sus permisos
+      const availableLinks = [];
+      
+      for (const link of allNavLinks) {
+        // Si el usuario tiene el permiso requerido para este enlace, añadirlo
+        if (await hasPermission(link.requiredPermission)) {
+          availableLinks.push({
+            name: link.name,
+            path: link.path
+          });
+        }
+      }
+      
+      setNavLinks(availableLinks);
+    };
+    
+    loadNavLinks();
+  }, [user, hasPermission]);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);

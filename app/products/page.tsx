@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
@@ -8,6 +8,7 @@ import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input from '@/components/Input';
 import ImageUpload from '@/components/ImageUpload';
+import { productService, Product as ProductType } from '@/services/productService';
 import styles from './page.module.css';
 
 export default function Products() {
@@ -19,43 +20,42 @@ export default function Products() {
   const [productForm, setProductForm] = useState({
     name: '',
     description: '',
-    price: '',
-    stock: '',
-    sku: '',
-    category: '',
     image: null as string | null,
     imageFile: null as File | null
   });
 
-  // Datos iniciales de ejemplo para los productos
-  const initialProducts: Product[] = [
-    { id: '1', name: 'Laptop HP 15"', sku: 'LP-001', category: 'Electrónicos', price: 799.99, stock: 15, image: 'https://placehold.co/300x200?text=Laptop' },
-    { id: '2', name: 'Monitor Dell 24"', sku: 'MN-002', category: 'Electrónicos', price: 249.99, stock: 8, image: 'https://placehold.co/300x200?text=Monitor' },
-    { id: '3', name: 'Teclado Mecánico', sku: 'KB-003', category: 'Accesorios', price: 89.99, stock: 20, image: 'https://placehold.co/300x200?text=Teclado' },
-    { id: '4', name: 'Mouse Inalámbrico', sku: 'MS-004', category: 'Accesorios', price: 29.99, stock: 25, image: 'https://placehold.co/300x200?text=Mouse' },
-    { id: '5', name: 'Auriculares Bluetooth', sku: 'AU-005', category: 'Audio', price: 59.99, stock: 12, image: 'https://placehold.co/300x200?text=Auriculares' },
-  ];
-  
   // Estado para almacenar la lista de productos
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<ProductType[]>([]);
+  // Estado para indicar carga
+  const [loading, setLoading] = useState(true);
+  // Estado para manejar errores
+  const [error, setError] = useState<string | null>(null);
 
-  // Definir el tipo para nuestros productos
-  type Product = {
-    id: string;
-    name: string;
-    sku: string;
-    category: string;
-    price: number;
-    stock: number;
-    image: string | null;
-  };
+  // Cargar productos al montar el componente
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const data = await productService.getAllProducts();
+        setProducts(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError('Error al cargar productos. Inténtelo de nuevo más tarde.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // Columnas para la tabla de productos
   const columns = [
     { 
       key: 'image', 
       header: 'Imagen',
-      render: (value: unknown, item: Product) => {
+      render: (value: unknown, item: ProductType) => {
         if (typeof value === 'string') {
           return (
             <div className={styles.productImage}>
@@ -73,19 +73,7 @@ export default function Products() {
       }
     },
     { key: 'name', header: 'Nombre' },
-    { key: 'sku', header: 'SKU' },
-    { key: 'category', header: 'Categoría' },
-    { 
-      key: 'price', 
-      header: 'Precio',
-      render: (value: unknown) => {
-        if (typeof value === 'number') {
-          return `$${value.toFixed(2)}`;
-        }
-        return String(value);
-      }
-    },
-    { key: 'stock', header: 'Stock' },
+    { key: 'description', header: 'Descripción' },
   ];
 
   // Función para manejar cambios en el formulario
@@ -107,41 +95,42 @@ export default function Products() {
   };
 
   // Función para manejar el envío del formulario
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validar campos obligatorios
-    if (!productForm.name || !productForm.sku || !productForm.price || !productForm.stock) {
+    if (!productForm.name || !productForm.description ) {
       alert('Por favor complete todos los campos obligatorios');
       return;
     }
     
     // Crear un nuevo producto con los datos del formulario
-    const newProduct: Product = {
+    const newProduct: ProductType = {
       id: Date.now().toString(), // Generar un ID único basado en la fecha
       name: productForm.name,
-      sku: productForm.sku,
-      category: productForm.category,
-      price: parseFloat(productForm.price),
-      stock: parseInt(productForm.stock),
-      image: productForm.image
+      description: productForm.description,
+      image: productForm.image,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     
-    // Agregar el nuevo producto a la lista
-    setProducts([...products, newProduct]);
-    
-    console.log('Producto guardado:', newProduct);
-    
-    // Limpiar el formulario y ocultarlo
-    setProductForm({
-      name: '',
-      description: '',
-      price: '',
-      stock: '',
-      sku: '',
-      category: '',
-      image: null,
-      imageFile: null
-    });
-    setShowForm(false);
+    // Llamar al servicio para crear el producto
+    try {
+      await productService.createProduct(newProduct);
+      // Actualizar la lista de productos
+      setProducts(prevProducts => [...prevProducts, newProduct]);
+      console.log('Producto guardado:', newProduct);
+      setShowForm(false);
+      setProductForm({
+        name: '',
+        description: '',
+        image: null,
+        imageFile: null
+      });
+    } catch (err) {
+      console.error('Error creating product:', err);
+      alert('Error al crear el producto. Inténtelo de nuevo más tarde.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Función para manejar el envío del formulario desde el evento submit
@@ -153,8 +142,7 @@ export default function Products() {
   // Filtrar productos según el término de búsqueda
   const filteredProducts = products.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase())
+    product.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -177,41 +165,6 @@ export default function Products() {
               id="name" 
               name="name" 
               value={productForm.name} 
-              onChange={handleInputChange} 
-              required 
-            />
-            <Input 
-              label="SKU" 
-              id="sku" 
-              name="sku" 
-              value={productForm.sku} 
-              onChange={handleInputChange} 
-              required 
-            />
-            <Input 
-              label="Precio" 
-              id="price" 
-              name="price" 
-              type="number" 
-              step="0.01" 
-              value={productForm.price} 
-              onChange={handleInputChange} 
-              required 
-            />
-            <Input 
-              label="Stock" 
-              id="stock" 
-              name="stock" 
-              type="number" 
-              value={productForm.stock} 
-              onChange={handleInputChange} 
-              required 
-            />
-            <Input 
-              label="Categoría" 
-              id="category" 
-              name="category" 
-              value={productForm.category} 
               onChange={handleInputChange} 
               required 
             />
@@ -244,17 +197,26 @@ export default function Products() {
             </div>
           </div>
 
-          <Card>
-            <Table 
-              columns={columns} 
-              data={filteredProducts} 
-              keyExtractor={(item) => item.id} 
+
+          {loading ? (
+            <div className={styles.loading}>Cargando usuarios...</div>
+          ) : error ? (
+            <div className={styles.error}>{error}</div>
+          ) : products.length === 0 ? (
+            <div className={styles.empty}>No se encontraron productos</div>
+          ) : (
+            <Card>
+              <Table 
+                columns={columns} 
+                data={filteredProducts} 
+                keyExtractor={(item) => item.id} 
               onRowClick={(item) => console.log('Producto seleccionado:', item)}
               emptyMessage="No se encontraron productos"
             />
           </Card>
-        </>
-      )}
+        )}
+      </>
+    )}
     </DashboardLayout>
   );
 }

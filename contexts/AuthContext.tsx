@@ -2,9 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { authService, User, LoginCredentials } from '@/services/authService';
-
-export type UserRole = 'admin' | 'manager' | 'employee';
+import { authService } from '@/services/authService';
+import { User, LoginCredentials, Permission } from '@/types/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -13,6 +12,9 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  hasPermission: (permissionName: string) => Promise<boolean>;
+  hasRole: (roleName: string) => boolean;
+  permissions: Permission[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +23,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const router = useRouter();
 
   // Check if user is logged in on initial load
@@ -32,6 +35,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Validate token and get user data
           const userData = await authService.validateToken();
           setUser(userData);
+          
+          // Cargar permisos del usuario
+          const userPermissions = await authService.getUserPermissions();
+          setPermissions(userPermissions);
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
@@ -52,6 +59,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError(null);
       const response = await authService.login(credentials);
       setUser(response.user);
+      
+      // Cargar permisos del usuario después del login
+      const userPermissions = await authService.getUserPermissions();
+      setPermissions(userPermissions);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.response?.data?.message || 'Error al iniciar sesión');
@@ -65,7 +76,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = () => {
     authService.logout();
     setUser(null);
+    setPermissions([]);
     router.push('/login');
+  };
+  
+  // Verificar si el usuario tiene un permiso específico
+  const hasPermission = async (permissionName: string): Promise<boolean> => {
+    return await authService.hasPermission(permissionName);
+  };
+  
+  // Verificar si el usuario tiene un rol específico
+  const hasRole = (roleName: string): boolean => {
+    return authService.hasRole(roleName);
   };
 
   return (
@@ -77,6 +99,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         logout,
         isAuthenticated: !!user,
+        hasPermission,
+        hasRole,
+        permissions,
       }}
     >
       {children}
