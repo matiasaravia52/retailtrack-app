@@ -197,17 +197,26 @@ export default function Products() {
             </div>
           </div>
 
-          <Card>
-            <Table 
-              columns={columns} 
-              data={filteredProducts} 
-              keyExtractor={(item) => item.id} 
+
+          {loading ? (
+            <div className={styles.loading}>Cargando usuarios...</div>
+          ) : error ? (
+            <div className={styles.error}>{error}</div>
+          ) : products.length === 0 ? (
+            <div className={styles.empty}>No se encontraron productos</div>
+          ) : (
+            <Card>
+              <Table 
+                columns={columns} 
+                data={filteredProducts} 
+                keyExtractor={(item) => item.id} 
               onRowClick={(item) => console.log('Producto seleccionado:', item)}
               emptyMessage="No se encontraron productos"
             />
           </Card>
-        </>
-      )}
+        )}
+      </>
+    )}
     </DashboardLayout>
   );
 }
