@@ -21,7 +21,8 @@ export default function Home() {
     
     // Si está autenticado, redirigir según el rol
     if (user) {
-      if (user.role === 'employee') {
+      const userRole = user.roles && user.roles.length > 0 ? user.roles[0].name : '';
+      if (userRole === 'employee') {
         router.push('/sales');
       } else {
         router.push('/dashboard');

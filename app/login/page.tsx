@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { LoginCredentials } from '@/services/authService';
+import { LoginCredentials } from '@/types/auth';
 import Input from '@/components/Input';
 import Button from '@/components/Button';
 import styles from './page.module.css';
@@ -22,7 +22,8 @@ export default function Login() {
     if (loading) return;
 
     if (isAuthenticated && user) {
-      if (user.role === 'employee') {
+      const userRole = user.roles && user.roles.length > 0 ? user.roles[0].name : '';
+      if (userRole === 'employee') {
         router.push('/sales');
       } else {
         router.push('/dashboard');
@@ -51,7 +52,8 @@ export default function Login() {
       setError(null);
       await login(credentials);
       // Redirect based on user role
-      if (user?.role === 'employee') {
+      const userRole = user?.roles && user.roles.length > 0 ? user.roles[0].name : '';
+      if (userRole === 'employee') {
         router.push('/sales');
       } else {
         router.push('/dashboard');

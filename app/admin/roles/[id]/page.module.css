@@ -1,0 +1,91 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.roleInfoContainer {
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.roleHeader {
+  margin-bottom: 1.5rem;
+}
+
+.roleTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.roleDescription {
+  color: #6b7280;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.infoLabel {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.infoValue {
+  color: #111827;
+}
+
+.infoId {
+  font-family: monospace;
+  background-color: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  display: inline-block;
+}
+
+.backLink {
+  color: #2563eb;
+  font-weight: 500;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.backLink:hover {
+  color: #1d4ed8;
+}
+
+.loadingMessage {
+  text-align: center;
+  padding: 2rem 0;
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.errorMessage {
+  background-color: #fee2e2;
+  border: 1px solid #f87171;
+  color: #b91c1c;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  margin-bottom: 1.5rem;
+}
+
+.warningMessage {
+  background-color: #fef3c7;
+  border: 1px solid #fbbf24;
+  color: #92400e;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  margin-bottom: 1.5rem;
+}
