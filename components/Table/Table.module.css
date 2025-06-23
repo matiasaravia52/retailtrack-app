@@ -42,6 +42,63 @@
   max-width: 200px; /* Limita el ancho máximo de las celdas */
 }
 
+.actionsCell {
+  white-space: nowrap;
+  text-align: right;
+  min-width: 150px;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.actionButton {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  color: #4b5563;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background-color: #f3f4f6;
+}
+
+.actionButton.primary {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.actionButton.primary:hover {
+  background-color: #2563eb;
+}
+
+.actionButton.secondary {
+  background-color: #6b7280;
+  color: white;
+  border-color: #6b7280;
+}
+
+.actionButton.secondary:hover {
+  background-color: #4b5563;
+}
+
+.actionButton.danger {
+  background-color: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.actionButton.danger:hover {
+  background-color: #dc2626;
+}
+
 @media (max-width: 768px) {
   .tableContainer {
     border-radius: 4px;
