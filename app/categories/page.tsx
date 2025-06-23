@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input from '@/components/Input';
 import styles from './page.module.css';
+import { categoryService, Category, CreateCategoryData } from '@/services/categoryService';
+import { Toaster, toast } from 'react-hot-toast';
 
 export default function Categories() {
   // Estado para controlar la visualización del formulario
@@ -14,24 +16,40 @@ export default function Categories() {
   // Estado para el término de búsqueda
   const [searchTerm, setSearchTerm] = useState('');
   // Estado para el formulario de categoría
-  const [categoryForm, setCategoryForm] = useState({
+  const [categoryForm, setCategoryForm] = useState<CreateCategoryData>({
     name: '',
     description: ''
   });
+  // Estado para las categorías
+  const [categories, setCategories] = useState<Category[]>([]);
+  // Estado para indicar carga
+  const [loading, setLoading] = useState(true);
+  // Estado para la categoría seleccionada para editar
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
 
-  // Datos de ejemplo para las categorías
-  const categories = [
-    { id: '1', name: 'Electrónicos', productCount: 25 },
-    { id: '2', name: 'Accesorios', productCount: 42 },
-    { id: '3', name: 'Audio', productCount: 18 },
-    { id: '4', name: 'Computación', productCount: 30 },
-    { id: '5', name: 'Telefonía', productCount: 15 },
-  ];
+  // Cargar categorías al montar el componente
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  // Función para cargar las categorías
+  const loadCategories = async () => {
+    try {
+      setLoading(true);
+      const data = await categoryService.getAllCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error('Error al cargar categorías:', error);
+      toast.error('Error al cargar las categorías');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Columnas para la tabla de categorías
   const columns = [
     { key: 'name', header: 'Nombre' },
-    { key: 'productCount', header: 'Cantidad de Productos' },
+    { key: 'description', header: 'Descripción' },
   ];
 
   // Función para manejar cambios en el formulario
@@ -44,14 +62,28 @@ export default function Categories() {
   };
 
   // Función para manejar el envío del formulario
-  const handleSubmit = () => {
-    console.log('Categoría a guardar:', categoryForm);
-    // Aquí iría la lógica para guardar la categoría
-    setShowForm(false);
-    setCategoryForm({
-      name: '',
-      description: ''
-    });
+  const handleSubmit = async () => {
+    try {
+      if (selectedCategory) {
+        // Actualizar categoría existente
+        await categoryService.updateCategory(selectedCategory.id, categoryForm);
+        toast.success('Categoría actualizada correctamente');
+      } else {
+        // Crear nueva categoría
+        await categoryService.createCategory(categoryForm);
+        toast.success('Categoría creada correctamente');
+      }
+      setShowForm(false);
+      setCategoryForm({
+        name: '',
+        description: ''
+      });
+      setSelectedCategory(null);
+      loadCategories(); // Recargar las categorías
+    } catch (error) {
+      console.error('Error al guardar categoría:', error);
+      toast.error('Error al guardar la categoría');
+    }
   };
 
   // Función para manejar el envío del formulario desde el evento submit
@@ -60,22 +92,56 @@ export default function Categories() {
     handleSubmit();
   };
 
+  // Función para eliminar una categoría
+  const handleDelete = async (id: string) => {
+    if (confirm('¿Está seguro que desea eliminar esta categoría?')) {
+      try {
+        await categoryService.deleteCategory(id);
+        toast.success('Categoría eliminada correctamente');
+        loadCategories(); // Recargar las categorías
+      } catch (error) {
+        console.error('Error al eliminar categoría:', error);
+        toast.error('Error al eliminar la categoría');
+      }
+    }
+  };
+
+  // Función para editar una categoría
+  const handleEdit = (category: Category) => {
+    setSelectedCategory(category);
+    setCategoryForm({
+      name: category.name,
+      description: category.description
+    });
+    setShowForm(true);
+  };
+
   // Filtrar categorías según el término de búsqueda
   const filteredCategories = categories.filter(category => 
-    category.name.toLowerCase().includes(searchTerm.toLowerCase())
+    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    category.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <DashboardLayout 
       title="Categorías" 
       actions={
-        <Button onClick={() => setShowForm(true)}>Nueva Categoría</Button>
+        <Button onClick={() => {
+          setSelectedCategory(null);
+          setCategoryForm({ name: '', description: '' });
+          setShowForm(true);
+        }}>Nueva Categoría</Button>
       }
     >
+      <Toaster position="top-right" />
       {showForm ? (
-        <Card title="Nueva Categoría" footer={
+        <Card title={selectedCategory ? "Editar Categoría" : "Nueva Categoría"} footer={
           <>
-            <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button variant="secondary" onClick={() => {
+              setShowForm(false);
+              setSelectedCategory(null);
+              setCategoryForm({ name: '', description: '' });
+            }}>Cancelar</Button>
             <Button onClick={handleSubmit}>Guardar</Button>
           </>
         }>
@@ -112,13 +178,28 @@ export default function Categories() {
           </div>
 
           <Card>
-            <Table 
-              columns={columns} 
-              data={filteredCategories} 
-              keyExtractor={(item) => item.id} 
-              onRowClick={(item) => console.log('Categoría seleccionada:', item)}
-              emptyMessage="No se encontraron categorías"
-            />
+            {loading ? (
+              <div className={styles.loading}>Cargando categorías...</div>
+            ) : (
+              <Table 
+                columns={columns} 
+                data={filteredCategories} 
+                keyExtractor={(item) => item.id} 
+                onRowClick={(item) => handleEdit(item)}
+                emptyMessage="No se encontraron categorías"
+                actions={[
+                  { 
+                    label: 'Editar', 
+                    onClick: (item: Category) => handleEdit(item) 
+                  },
+                  { 
+                    label: 'Eliminar', 
+                    onClick: (item: Category) => handleDelete(item.id),
+                    variant: 'danger'
+                  }
+                ]}
+              />
+            )}
           </Card>
         </>
       )}
