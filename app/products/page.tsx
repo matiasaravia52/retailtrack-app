@@ -9,6 +9,7 @@ import Table from '@/components/Table';
 import Input from '@/components/Input';
 import ImageUpload from '@/components/ImageUpload';
 import { productService, Product as ProductType, ProductStatus } from '@/services/productService';
+import { categoryService, Category } from '@/services/categoryService';
 import styles from './page.module.css';
 
 export default function Products() {
@@ -28,10 +29,16 @@ export default function Products() {
 
   // Estado para almacenar la lista de productos
   const [products, setProducts] = useState<ProductType[]>([]);
+  // Estado para almacenar la lista de categorías
+  const [categories, setCategories] = useState<Category[]>([]);
   // Estado para indicar carga
   const [loading, setLoading] = useState(true);
+  // Estado para indicar carga de categorías
+  const [loadingCategories, setLoadingCategories] = useState(true);
   // Estado para manejar errores
   const [error, setError] = useState<string | null>(null);
+  // Estado para manejar errores de categorías
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
   // Cargar productos al montar el componente
   useEffect(() => {
@@ -50,6 +57,25 @@ export default function Products() {
     };
 
     fetchProducts();
+  }, []);
+  
+  // Cargar categorías al montar el componente
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const data = await categoryService.getAllCategories();
+        setCategories(data);
+        setCategoryError(null);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        setCategoryError('Error al cargar categorías. Inténtelo de nuevo más tarde.');
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
   }, []);
 
   // Columnas para la tabla de productos
@@ -76,6 +102,15 @@ export default function Products() {
     },
     { key: 'name', header: 'Nombre' },
     { key: 'description', header: 'Descripción' },
+    { 
+      key: 'categoryId', 
+      header: 'Categoría',
+      render: (value: unknown) => {
+        const categoryId = value as string;
+        const category = categories.find(cat => cat.id === categoryId);
+        return category ? category.name : 'Sin categoría';
+      }
+    },
     { 
       key: 'status', 
       header: 'Estado',
@@ -193,6 +228,30 @@ export default function Products() {
               onChange={handleInputChange} 
               required
             />
+            
+            <div className={styles.formGroup}>
+              <label htmlFor="categoryId">Categoría</label>
+              <select
+                id="categoryId"
+                name="categoryId"
+                value={productForm.categoryId || ''}
+                onChange={handleInputChange}
+                className={styles.select}
+              >
+                <option value="">Seleccione una categoría</option>
+                {loadingCategories ? (
+                  <option value="" disabled>Cargando categorías...</option>
+                ) : categoryError ? (
+                  <option value="" disabled>Error al cargar categorías</option>
+                ) : (
+                  categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
             
             <div className={styles.formGroup}>
               <label htmlFor="status">Estado</label>

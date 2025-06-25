@@ -27,6 +27,51 @@
   margin: 0 auto;
 }
 
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-weight: 500;
+  color: #333;
+}
+
+.select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 1rem;
+}
+
+.statusActive {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: #e6f7e6;
+  color: #2e7d32;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.statusInactive {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background-color: #ffebee;
+  color: #c62828;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
 @media (max-width: 768px) {
   .header {
     flex-direction: column;

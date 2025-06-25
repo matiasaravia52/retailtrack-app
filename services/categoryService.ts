@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { authService } from './authService';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://retailtrack-api-production.up.railway.app';
 
@@ -16,22 +17,27 @@ axios.interceptors.response.use(
   }
 );
   
+export enum CategoryStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive'
+}
+
 export interface Category {
   id: string;
   name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
+  status: CategoryStatus;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateCategoryData {
   name: string;
-  description: string;
+  status?: CategoryStatus;
 }
 
 export interface UpdateCategoryData {
   name?: string;
-  description?: string;
+  status?: CategoryStatus;
 }
 
 export const categoryService = {
@@ -39,7 +45,12 @@ export const categoryService = {
   // Get all categories
   async getAllCategories(): Promise<Category[]> {
     try {
-      const response = await axios.get(`${API_URL}/api/categories`);
+      const token = authService.getToken();
+      const response = await axios.get(`${API_URL}/api/categories`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -50,7 +61,12 @@ export const categoryService = {
   // Get category by ID
   async getCategoryById(id: string): Promise<Category> {
     try {
-      const response = await axios.get(`${API_URL}/api/categories/${id}`);
+      const token = authService.getToken();
+      const response = await axios.get(`${API_URL}/api/categories/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       return response.data;
     } catch (error) {
       console.error(`Error fetching category with ID ${id}:`, error);
@@ -61,7 +77,13 @@ export const categoryService = {
   // Create new category
   async createCategory(categoryData: CreateCategoryData): Promise<Category> {
     try {
-      const response = await axios.post(`${API_URL}/api/categories`, categoryData);
+      const token = authService.getToken();
+      const response = await axios.post(`${API_URL}/api/categories`, categoryData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       return response.data;
     } catch (error) {
       console.error('Error creating category:', error);
@@ -72,7 +94,13 @@ export const categoryService = {
   // Update category
   async updateCategory(id: string, categoryData: UpdateCategoryData): Promise<Category> {
     try {
-      const response = await axios.put(`${API_URL}/api/categories/${id}`, categoryData);
+      const token = authService.getToken();
+      const response = await axios.put(`${API_URL}/api/categories/${id}`, categoryData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       return response.data;
     } catch (error) {
       console.error(`Error updating category with ID ${id}:`, error);
@@ -81,10 +109,15 @@ export const categoryService = {
   },
 
   // Delete category
-  async deleteCategory(id: string): Promise<{ message: string }> {
+  async deleteCategory(id: string): Promise<void> {
     try {
-      const response = await axios.delete(`${API_URL}/api/categories/${id}`);
-      return response.data;
+      const token = authService.getToken();
+      await axios.delete(`${API_URL}/api/categories/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      // La API devuelve 204 sin contenido
     } catch (error) {
       console.error(`Error deleting category with ID ${id}:`, error);
       throw error;
@@ -94,7 +127,12 @@ export const categoryService = {
   // Search categories
   async searchCategories(query: string): Promise<Category[]> {
     try {
-      const response = await axios.get(`${API_URL}/api/categories/search?query=${query}`);
+      const token = authService.getToken();
+      const response = await axios.get(`${API_URL}/api/categories/search?query=${encodeURIComponent(query)}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       return response.data;
     } catch (error) {
       console.error(`Error searching categories with query "${query}":`, error);

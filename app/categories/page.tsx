@@ -7,7 +7,7 @@ import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input from '@/components/Input';
 import styles from './page.module.css';
-import { categoryService, Category, CreateCategoryData } from '@/services/categoryService';
+import { categoryService, Category, CreateCategoryData, CategoryStatus } from '@/services/categoryService';
 import { Toaster, toast } from 'react-hot-toast';
 
 export default function Categories() {
@@ -18,7 +18,7 @@ export default function Categories() {
   // Estado para el formulario de categoría
   const [categoryForm, setCategoryForm] = useState<CreateCategoryData>({
     name: '',
-    description: ''
+    status: CategoryStatus.ACTIVE
   });
   // Estado para las categorías
   const [categories, setCategories] = useState<Category[]>([]);
@@ -49,11 +49,22 @@ export default function Categories() {
   // Columnas para la tabla de categorías
   const columns = [
     { key: 'name', header: 'Nombre' },
-    { key: 'description', header: 'Descripción' },
+    { 
+      key: 'status', 
+      header: 'Estado',
+      render: (value: unknown) => {
+        const status = value as CategoryStatus;
+        return (
+          <span className={status === CategoryStatus.ACTIVE ? styles.statusActive : styles.statusInactive}>
+            {status === CategoryStatus.ACTIVE ? 'Activo' : 'Inactivo'}
+          </span>
+        );
+      }
+    },
   ];
 
   // Función para manejar cambios en el formulario
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setCategoryForm({
       ...categoryForm,
@@ -76,7 +87,7 @@ export default function Categories() {
       setShowForm(false);
       setCategoryForm({
         name: '',
-        description: ''
+        status: CategoryStatus.ACTIVE
       });
       setSelectedCategory(null);
       loadCategories(); // Recargar las categorías
@@ -111,15 +122,14 @@ export default function Categories() {
     setSelectedCategory(category);
     setCategoryForm({
       name: category.name,
-      description: category.description
+      status: category.status
     });
     setShowForm(true);
   };
 
   // Filtrar categorías según el término de búsqueda
   const filteredCategories = categories.filter(category => 
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchTerm.toLowerCase())
+    category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -128,7 +138,7 @@ export default function Categories() {
       actions={
         <Button onClick={() => {
           setSelectedCategory(null);
-          setCategoryForm({ name: '', description: '' });
+          setCategoryForm({ name: '', status: CategoryStatus.ACTIVE });
           setShowForm(true);
         }}>Nueva Categoría</Button>
       }
@@ -140,7 +150,7 @@ export default function Categories() {
             <Button variant="secondary" onClick={() => {
               setShowForm(false);
               setSelectedCategory(null);
-              setCategoryForm({ name: '', description: '' });
+              setCategoryForm({ name: '', status: CategoryStatus.ACTIVE });
             }}>Cancelar</Button>
             <Button onClick={handleSubmit}>Guardar</Button>
           </>
@@ -154,13 +164,19 @@ export default function Categories() {
               onChange={handleInputChange} 
               required 
             />
-            <Input 
-              label="Descripción" 
-              id="description" 
-              name="description" 
-              value={categoryForm.description} 
-              onChange={handleInputChange} 
-            />
+            <div className={styles.formGroup}>
+              <label htmlFor="status">Estado</label>
+              <select
+                id="status"
+                name="status"
+                value={categoryForm.status}
+                onChange={handleInputChange}
+                className={styles.select}
+              >
+                <option value={CategoryStatus.ACTIVE}>Activo</option>
+                <option value={CategoryStatus.INACTIVE}>Inactivo</option>
+              </select>
+            </div>
           </form>
         </Card>
       ) : (
