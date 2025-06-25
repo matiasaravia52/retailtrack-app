@@ -20,6 +20,9 @@ const allNavLinks = [
   { name: 'Ventas', path: '/sales', requiredPermission: 'sales:view' },
   { name: 'Usuarios', path: '/users', requiredPermission: 'users:view' },
   { name: 'Roles y Permisos', path: '/admin/roles', requiredPermission: 'roles:manage' },
+  { name: 'Clientes', path: '/customers', requiredPermission: 'customers:view' },
+  { name: 'Proveedores', path: '/suppliers', requiredPermission: 'suppliers:view' },
+  { name: 'Compras', path: '/purchases', requiredPermission: 'purchases:view' },
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ userName, onLogout }) => {

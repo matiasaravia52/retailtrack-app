@@ -105,13 +105,7 @@ export const authService = {
   // Obtener los permisos del usuario
   getUserPermissions: async (): Promise<Permission[]> => {
     try {
-      // Verificar si ya tenemos los permisos en localStorage
-      const permissionsStr = localStorage.getItem('permissions');
-      if (permissionsStr) {
-        return JSON.parse(permissionsStr);
-      }
-      
-      // Si no, obtenerlos del servidor
+      // Siempre intentamos obtener los permisos más recientes del servidor
       const token = authService.getToken();
       
       if (!token) {
@@ -128,6 +122,7 @@ export const authService = {
       // Guardar permisos en localStorage
       if (response.data) {
         localStorage.setItem('permissions', JSON.stringify(response.data));
+        console.log('Permisos actualizados:', response.data);
       }
       
       return response.data;
@@ -141,6 +136,17 @@ export const authService = {
       } else {
         console.error('Unexpected error fetching user permissions:', error);
       }
+      
+      // Si hay un error, intentamos usar los permisos almacenados en localStorage
+      const permissionsStr = localStorage.getItem('permissions');
+      if (permissionsStr) {
+        try {
+          return JSON.parse(permissionsStr);
+        } catch (e) {
+          console.error('Error parsing stored permissions:', e);
+        }
+      }
+      
       return [];
     }
   },

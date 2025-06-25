@@ -36,8 +36,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const userData = await authService.validateToken();
           setUser(userData);
           
-          // Cargar permisos del usuario
+          // Cargar permisos del usuario - forzar actualización desde el servidor
+          console.log('Cargando permisos del usuario...');
+          localStorage.removeItem('permissions'); // Eliminar caché de permisos
           const userPermissions = await authService.getUserPermissions();
+          console.log('Permisos cargados:', userPermissions);
           setPermissions(userPermissions);
         }
       } catch (err) {
@@ -60,8 +63,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await authService.login(credentials);
       setUser(response.user);
       
-      // Cargar permisos del usuario después del login
+      // Cargar permisos del usuario después del login - forzar actualización desde el servidor
+      console.log('Cargando permisos del usuario después del login...');
+      localStorage.removeItem('permissions'); // Eliminar caché de permisos
       const userPermissions = await authService.getUserPermissions();
+      console.log('Permisos cargados después del login:', userPermissions);
       setPermissions(userPermissions);
     } catch (err: any) {
       console.error('Login error:', err);
@@ -82,6 +88,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   // Verificar si el usuario tiene un permiso específico
   const hasPermission = async (permissionName: string): Promise<boolean> => {
+    // Primero verificamos en los permisos cargados en memoria
+    if (permissions.some(p => p.name === permissionName)) {
+      return true;
+    }
+    // Si no está en memoria, consultamos al servicio
     return await authService.hasPermission(permissionName);
   };
   

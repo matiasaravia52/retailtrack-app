@@ -5,11 +5,18 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { User } from '@/types/auth';
 
-// Definir los permisos de acceso según el rol
-const rolePermissions: Record<string, string[]> = {
-  admin: ['/dashboard', '/products', '/categories', '/inventory', '/sales', '/users'],
-  manager: ['/dashboard', '/products', '/categories', '/inventory', '/sales'],
-  employee: ['/products', '/sales'],
+// Mapeo de rutas a permisos requeridos
+const routePermissions: Record<string, string> = {
+  '/dashboard': 'dashboard:view',
+  '/products': 'products:view',
+  '/categories': 'categories:view',
+  '/inventory': 'inventory:view',
+  '/sales': 'sales:view',
+  '/users': 'users:view',
+  '/admin/roles': 'roles:manage',
+  '/customers': 'customers:view',
+  '/suppliers': 'suppliers:view',
+  '/purchases': 'purchases:view',
 };
 
 // Páginas públicas que no requieren autenticación
@@ -21,7 +28,7 @@ interface RouteGuardProps {
 }
 
 const RouteGuard: React.FC<RouteGuardProps> = ({ children, allowedRoles }) => {
-  const { user, isAuthenticated, hasRole } = useAuth();
+  const { user, isAuthenticated, hasRole, hasPermission } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -59,36 +66,39 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children, allowedRoles }) => {
     }
     
     // Si está autenticado, verificar si tiene permiso para acceder a la página
-    if (user && !hasPathPermission(user, pathname)) {
-      // Determinar el rol principal del usuario
-      const userRole = user.roles && user.roles.length > 0 ? user.roles[0].name : 'employee';
-      // Redirigir a la primera página permitida según su rol
-      const allowedPages = rolePermissions[userRole];
-      
-      if (allowedPages && allowedPages.length > 0) {
-        // Evitar redirecciones cíclicas - solo redirigir si no estamos ya en la página destino
-        if (pathname !== allowedPages[0]) {
-          router.push(allowedPages[0]);
-        }
-      } else {
-        // Si no tiene permisos, redirigir a la página de inicio
-        if (pathname !== '/') {
-          router.push('/');
+    const checkPathPermission = async () => {
+      if (user && !(await hasPathPermission(user, pathname))) {
+        // Si no tiene permiso para esta ruta, redirigir al dashboard o a una ruta por defecto
+        if (await hasPermission('dashboard:view')) {
+          if (pathname !== '/dashboard') {
+            router.push('/dashboard');
+          }
+        } else if (await hasPermission('sales:view')) {
+          if (pathname !== '/sales') {
+            router.push('/sales');
+          }
+        } else {
+          // Si no tiene permisos para ninguna ruta principal, redirigir a la página de inicio
+          if (pathname !== '/') {
+            router.push('/');
+          }
         }
       }
-    }
+    };
+    
+    checkPathPermission();
   }, [isAuthenticated, pathname, router, user, allowedRoles, hasRole]);
 
   // Función para verificar si el usuario tiene permiso para acceder a la ruta
-  const hasPathPermission = (user: User, path: string): boolean => {
-    // Si el usuario tiene roles, verificar si alguno de ellos tiene permiso
-    if (user.roles && user.roles.length > 0) {
-      return user.roles.some((role: { name: string }) => {
-        const allowedPaths = rolePermissions[role.name] || [];
-        return allowedPaths.includes(path);
-      });
+  const hasPathPermission = async (user: User, path: string): Promise<boolean> => {
+    // Si la ruta no requiere un permiso específico, permitir acceso
+    if (!routePermissions[path]) {
+      return true;
     }
-    return false;
+    
+    // Verificar si el usuario tiene el permiso requerido para esta ruta
+    const requiredPermission = routePermissions[path];
+    return await hasPermission(requiredPermission);
   };
 
   return <>{children}</>;
