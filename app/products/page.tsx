@@ -8,7 +8,7 @@ import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input from '@/components/Input';
 import ImageUpload from '@/components/ImageUpload';
-import { productService, Product as ProductType } from '@/services/productService';
+import { productService, Product as ProductType, ProductStatus } from '@/services/productService';
 import styles from './page.module.css';
 
 export default function Products() {
@@ -20,6 +20,8 @@ export default function Products() {
   const [productForm, setProductForm] = useState({
     name: '',
     description: '',
+    categoryId: null as string | null,
+    status: ProductStatus.ACTIVE,
     image: null as string | null,
     imageFile: null as File | null
   });
@@ -74,10 +76,22 @@ export default function Products() {
     },
     { key: 'name', header: 'Nombre' },
     { key: 'description', header: 'Descripción' },
+    { 
+      key: 'status', 
+      header: 'Estado',
+      render: (value: unknown) => {
+        const status = value as ProductStatus;
+        return (
+          <span className={status === ProductStatus.ACTIVE ? styles.statusActive : styles.statusInactive}>
+            {status === ProductStatus.ACTIVE ? 'Activo' : 'Inactivo'}
+          </span>
+        );
+      }
+    },
   ];
 
   // Función para manejar cambios en el formulario
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setProductForm({
       ...productForm,
@@ -97,31 +111,33 @@ export default function Products() {
   // Función para manejar el envío del formulario
   const handleSubmit = async () => {
     // Validar campos obligatorios
-    if (!productForm.name || !productForm.description ) {
+    if (!productForm.name || !productForm.description) {
       alert('Por favor complete todos los campos obligatorios');
       return;
     }
     
     // Crear un nuevo producto con los datos del formulario
-    const newProduct: ProductType = {
-      id: Date.now().toString(), // Generar un ID único basado en la fecha
+    const newProductData = {
       name: productForm.name,
       description: productForm.description,
-      image: productForm.image,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      status: productForm.status,
+      categoryId: productForm.categoryId || undefined,
+      image: productForm.image || undefined
     };
     
     // Llamar al servicio para crear el producto
     try {
-      await productService.createProduct(newProduct);
+      setLoading(true);
+      const createdProduct = await productService.createProduct(newProductData);
       // Actualizar la lista de productos
-      setProducts(prevProducts => [...prevProducts, newProduct]);
-      console.log('Producto guardado:', newProduct);
+      setProducts(prevProducts => [...prevProducts, createdProduct]);
+      console.log('Producto guardado:', createdProduct);
       setShowForm(false);
       setProductForm({
         name: '',
         description: '',
+        categoryId: null,
+        status: ProductStatus.ACTIVE,
         image: null,
         imageFile: null
       });
@@ -169,17 +185,33 @@ export default function Products() {
               required 
             />
             
-            <ImageUpload
-              label="Imagen del producto"
-              value={productForm.image}
-              onChange={handleImageChange}
-            />
             <Input 
               label="Descripción" 
               id="description" 
               name="description" 
               value={productForm.description} 
               onChange={handleInputChange} 
+              required
+            />
+            
+            <div className={styles.formGroup}>
+              <label htmlFor="status">Estado</label>
+              <select
+                id="status"
+                name="status"
+                value={productForm.status}
+                onChange={handleInputChange}
+                className={styles.select}
+              >
+                <option value={ProductStatus.ACTIVE}>Activo</option>
+                <option value={ProductStatus.INACTIVE}>Inactivo</option>
+              </select>
+            </div>
+            
+            <ImageUpload
+              label="Imagen del producto"
+              value={productForm.image}
+              onChange={handleImageChange}
             />
           </form>
         </Card>
@@ -199,7 +231,7 @@ export default function Products() {
 
 
           {loading ? (
-            <div className={styles.loading}>Cargando usuarios...</div>
+            <div className={styles.loading}>Cargando productos...</div>
           ) : error ? (
             <div className={styles.error}>{error}</div>
           ) : products.length === 0 ? (
@@ -210,11 +242,11 @@ export default function Products() {
                 columns={columns} 
                 data={filteredProducts} 
                 keyExtractor={(item) => item.id} 
-              onRowClick={(item) => console.log('Producto seleccionado:', item)}
-              emptyMessage="No se encontraron productos"
-            />
-          </Card>
-        )}
+                onRowClick={(item) => console.log('Producto seleccionado:', item)}
+                emptyMessage="No se encontraron productos"
+              />
+            </Card>
+          )}
       </>
     )}
     </DashboardLayout>
