@@ -1,34 +1,35 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input, { Select } from '@/components/Input';
 import styles from './page.module.css';
+import { batchService, CreateBatchData } from '@/services/inventoryService';
+import { productService, Product } from '@/services/productService';
 
 export default function Inventory() {
   // Estado para controlar la visualización del formulario
   const [showForm, setShowForm] = useState(false);
   // Estado para el término de búsqueda
   const [searchTerm, setSearchTerm] = useState('');
-  // Estado para el formulario de movimiento de inventario
-  const [movementForm, setMovementForm] = useState({
+  // Estado para los productos
+  const [products, setProducts] = useState<Product[]>([]);
+  // Estado para el inventario calculado
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  // Estado para indicar carga
+  const [loading, setLoading] = useState(true);
+  // Estado para mensajes de error
+  const [error, setError] = useState<string | null>(null);
+  // Estado para el formulario de lote
+  const [batchForm, setBatchForm] = useState<CreateBatchData>({
     productId: '',
-    type: 'entrada',
-    quantity: '',
-    notes: ''
+    initialQuantity: 0,
+    availableQuantity: 0,
+    unitCost: 0
   });
-
-  // Datos de ejemplo para el inventario
-  const inventory = [
-    { id: '1', name: 'Laptop HP 15"', sku: 'LP-001', stock: 15, minStock: 5, lastMovement: '15/04/2025' },
-    { id: '2', name: 'Monitor Dell 24"', sku: 'MN-002', stock: 3, minStock: 5, lastMovement: '14/04/2025' },
-    { id: '3', name: 'Teclado Mecánico', sku: 'KB-003', stock: 20, minStock: 10, lastMovement: '13/04/2025' },
-    { id: '4', name: 'Mouse Inalámbrico', sku: 'MS-004', stock: 25, minStock: 10, lastMovement: '12/04/2025' },
-    { id: '5', name: 'Auriculares Bluetooth', sku: 'AU-005', stock: 2, minStock: 5, lastMovement: '11/04/2025' },
-  ];
 
   // Definir el tipo para nuestros items de inventario
   type InventoryItem = {
@@ -39,6 +40,58 @@ export default function Inventory() {
     minStock: number;
     lastMovement: string;
   };
+  
+  // Cargar productos y calcular inventario al montar el componente
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Cargar productos
+        const productsData = await productService.getAllProducts();
+        setProducts(productsData);
+        
+        // Calcular inventario para cada producto
+        const inventoryItems: InventoryItem[] = [];
+        
+        for (const product of productsData) {
+          try {
+            // Obtener lotes del producto
+            const batches = await batchService.getBatchesByProduct(product.id);
+            
+            // Calcular stock total
+            const totalStock = batches.reduce((sum, batch) => sum + batch.availableQuantity, 0);
+            
+            // Obtener fecha del último movimiento
+            const lastMovementDate = batches.length > 0 ? 
+              new Date(Math.max(...batches.map(b => new Date(b.createdAt || '').getTime()))) : 
+              new Date();
+            
+            // Formatear fecha
+            const lastMovement = lastMovementDate.toLocaleDateString('es-ES');
+            
+            inventoryItems.push({
+              id: product.id,
+              name: product.name,
+              sku: product.id.substring(0, 6), // Placeholder para SKU
+              stock: totalStock,
+              minStock: 5, // Valor por defecto, debería venir del producto
+              lastMovement
+            });
+          } catch (err) {
+            console.error(`Error calculando inventario para ${product.name}:`, err);
+          }
+        }
+        
+        setInventory(inventoryItems);
+        setLoading(false);
+      } catch (err: any) {
+        setError(err.message || 'Error cargando datos');
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   // Columnas para la tabla de inventario
   const columns = [
@@ -60,26 +113,78 @@ export default function Inventory() {
     { key: 'lastMovement', header: 'Último Movimiento' },
   ];
 
-  // Función para manejar cambios en el formulario
+  // Función para manejar cambios en el formulario de lote
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setMovementForm({
-      ...movementForm,
-      [name]: value
+    setBatchForm({
+      ...batchForm,
+      [name]: name === 'productId' ? value : Number(value)
     });
   };
 
   // Función para manejar el envío del formulario
-  const handleSubmit = () => {
-    console.log('Movimiento a registrar:', movementForm);
-    // Aquí iría la lógica para registrar el movimiento
-    setShowForm(false);
-    setMovementForm({
-      productId: '',
-      type: 'entrada',
-      quantity: '',
-      notes: ''
-    });
+  const handleSubmit = async () => {
+    try {
+      // Validar que los campos numéricos sean mayores a 0
+      if (batchForm.initialQuantity <= 0 || batchForm.unitCost <= 0) {
+        alert('La cantidad inicial y el costo unitario deben ser mayores a 0');
+        return;
+      }
+      
+      // Asegurar que la cantidad disponible sea igual a la inicial al crear el lote
+      const formData = {
+        ...batchForm,
+        availableQuantity: batchForm.initialQuantity
+      };
+      
+      // Crear el lote
+      await batchService.createBatch(formData);
+      
+      // Recargar los datos de inventario
+      const productsData = await productService.getAllProducts();
+      setProducts(productsData);
+      
+      // Recalcular inventario
+      const inventoryItems: InventoryItem[] = [];
+      
+      for (const product of productsData) {
+        try {
+          const batches = await batchService.getBatchesByProduct(product.id);
+          const totalStock = batches.reduce((sum, batch) => sum + batch.availableQuantity, 0);
+          const lastMovementDate = batches.length > 0 ? 
+            new Date(Math.max(...batches.map(b => new Date(b.createdAt || '').getTime()))) : 
+            new Date();
+          const lastMovement = lastMovementDate.toLocaleDateString('es-ES');
+          
+          inventoryItems.push({
+            id: product.id,
+            name: product.name,
+            sku: product.id.substring(0, 6),
+            stock: totalStock,
+            minStock: 5,
+            lastMovement
+          });
+        } catch (err) {
+          console.error(`Error calculando inventario para ${product.name}:`, err);
+        }
+      }
+      
+      setInventory(inventoryItems);
+      
+      // Cerrar formulario y resetear
+      setShowForm(false);
+      setBatchForm({
+        productId: '',
+        initialQuantity: 0,
+        availableQuantity: 0,
+        unitCost: 0
+      });
+      
+      alert('Lote creado correctamente');
+    } catch (err: any) {
+      console.error('Error al crear lote:', err);
+      alert(`Error al crear lote: ${err.message || 'Error desconocido'}`);
+    }
   };
 
   // Función para manejar el envío del formulario desde el evento submit
@@ -98,11 +203,11 @@ export default function Inventory() {
     <DashboardLayout 
       title="Inventario" 
       actions={
-        <Button onClick={() => setShowForm(true)}>Registrar Movimiento</Button>
+        <Button onClick={() => setShowForm(true)}>Agregar Stock por Lote</Button>
       }
     >
       {showForm ? (
-        <Card title="Registrar Movimiento de Inventario" footer={
+        <Card title="Agregar Stock por Lote" footer={
           <>
             <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
             <Button onClick={handleSubmit}>Guardar</Button>
@@ -113,47 +218,37 @@ export default function Inventory() {
               label="Producto"
               id="productId"
               name="productId"
-              value={movementForm.productId}
+              value={batchForm.productId}
               onChange={handleInputChange}
               required
             >
               <option value="">Seleccione un producto</option>
-              {inventory.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.name} ({item.sku})
+              {products.map(product => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
                 </option>
               ))}
             </Select>
             
-            <Select
-              label="Tipo de Movimiento"
-              id="type"
-              name="type"
-              value={movementForm.type}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="entrada">Entrada</option>
-              <option value="salida">Salida</option>
-              <option value="ajuste">Ajuste</option>
-            </Select>
-            
             <Input 
-              label="Cantidad" 
-              id="quantity" 
-              name="quantity" 
+              label="Cantidad Inicial" 
+              id="initialQuantity" 
+              name="initialQuantity" 
               type="number" 
-              value={movementForm.quantity} 
+              value={batchForm.initialQuantity.toString()} 
               onChange={handleInputChange} 
               required 
             />
             
             <Input 
-              label="Notas" 
-              id="notes" 
-              name="notes" 
-              value={movementForm.notes} 
+              label="Costo Unitario" 
+              id="unitCost" 
+              name="unitCost" 
+              type="number" 
+              step="0.01"
+              value={batchForm.unitCost.toString()} 
               onChange={handleInputChange} 
+              required 
             />
           </form>
         </Card>
@@ -179,15 +274,25 @@ export default function Inventory() {
             </select>
           </div>
 
-          <Card>
-            <Table 
-              columns={columns} 
-              data={filteredInventory} 
-              keyExtractor={(item) => item.id} 
-              onRowClick={(item) => console.log('Producto seleccionado:', item)}
-              emptyMessage="No se encontraron productos"
-            />
-          </Card>
+          {loading ? (
+            <Card>
+              <div className={styles.loading}>Cargando inventario...</div>
+            </Card>
+          ) : error ? (
+            <Card>
+              <div className={styles.error}>{error}</div>
+            </Card>
+          ) : (
+            <Card>
+              <Table 
+                columns={columns} 
+                data={filteredInventory} 
+                keyExtractor={(item) => item.id} 
+                onRowClick={(item) => console.log('Producto seleccionado:', item)}
+                emptyMessage="No se encontraron productos"
+              />
+            </Card>
+          )}
         </>
       )}
     </DashboardLayout>
