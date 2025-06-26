@@ -24,7 +24,11 @@ export default function Products() {
     categoryId: null as string | null,
     status: ProductStatus.ACTIVE,
     image: null as string | null,
-    imageFile: null as File | null
+    imageFile: null as File | null,
+    stock: 0,
+    cost: 0,
+    retail_price: 0,
+    wholesale_price: 0
   });
 
   // Estado para almacenar la lista de productos
@@ -112,6 +116,32 @@ export default function Products() {
       }
     },
     { 
+      key: 'stock', 
+      header: 'Stock',
+      render: (value: unknown) => {
+        // Asegurarse de que stock sea un número
+        return typeof value === 'number' ? value : 0;
+      }
+    },
+    { 
+      key: 'retail_price', 
+      header: 'Precio minorista',
+      render: (value: unknown) => {
+        // Asegurarse de que price sea un número
+        const price = typeof value === 'number' ? value : 0;
+        return `$${price.toFixed(2)}`;
+      }
+    },
+    { 
+      key: 'wholesale_price', 
+      header: 'Precio mayorista',
+      render: (value: unknown) => {
+        // Asegurarse de que price sea un número
+        const price = typeof value === 'number' ? value : 0;
+        return `$${price.toFixed(2)}`;
+      }
+    },
+    { 
       key: 'status', 
       header: 'Estado',
       render: (value: unknown) => {
@@ -157,7 +187,11 @@ export default function Products() {
       description: productForm.description,
       status: productForm.status,
       categoryId: productForm.categoryId || undefined,
-      image: productForm.image || undefined
+      image: productForm.image || undefined,
+      stock: productForm.stock,
+      cost: productForm.cost,
+      retail_price: productForm.retail_price,
+      wholesale_price: productForm.wholesale_price
     };
     
     // Llamar al servicio para crear el producto
@@ -174,7 +208,11 @@ export default function Products() {
         categoryId: null,
         status: ProductStatus.ACTIVE,
         image: null,
-        imageFile: null
+        imageFile: null,
+        stock: 0,
+        cost: 0,
+        retail_price: 0,
+        wholesale_price: 0
       });
     } catch (err) {
       console.error('Error creating product:', err);
@@ -266,6 +304,57 @@ export default function Products() {
                 <option value={ProductStatus.INACTIVE}>Inactivo</option>
               </select>
             </div>
+            
+            <Input 
+              label="Stock inicial" 
+              id="stock" 
+              name="stock" 
+              type="number"
+              value={productForm.stock.toString()} 
+              onChange={(e) => setProductForm({
+                ...productForm,
+                stock: parseInt(e.target.value) || 0
+              })} 
+            />
+            
+            <Input 
+              label="Costo ($)" 
+              id="cost" 
+              name="cost" 
+              type="number"
+              step="0.01"
+              value={productForm.cost.toString()} 
+              onChange={(e) => setProductForm({
+                ...productForm,
+                cost: parseFloat(e.target.value) || 0
+              })} 
+            />
+            
+            <Input 
+              label="Precio minorista ($)" 
+              id="retail_price" 
+              name="retail_price" 
+              type="number"
+              step="0.01"
+              value={productForm.retail_price.toString()} 
+              onChange={(e) => setProductForm({
+                ...productForm,
+                retail_price: parseFloat(e.target.value) || 0
+              })} 
+            />
+            
+            <Input 
+              label="Precio mayorista ($)" 
+              id="wholesale_price" 
+              name="wholesale_price" 
+              type="number"
+              step="0.01"
+              value={productForm.wholesale_price.toString()} 
+              onChange={(e) => setProductForm({
+                ...productForm,
+                wholesale_price: parseFloat(e.target.value) || 0
+              })} 
+            />
             
             <ImageUpload
               label="Imagen del producto"

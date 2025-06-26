@@ -31,6 +31,10 @@ export interface Product {
   image?: string | null; // Añadimos imagen aunque no esté en el modelo de la API para mantener compatibilidad
   createdAt?: string;
   updatedAt?: string;
+  stock: number;
+  cost: number;
+  retail_price: number;
+  wholesale_price: number;
 }
 
 export interface CreateProductData {
@@ -39,6 +43,10 @@ export interface CreateProductData {
   categoryId?: string;
   status?: ProductStatus;
   image?: string | null; // Para mantener compatibilidad con el frontend actual
+  stock?: number;
+  cost?: number;
+  retail_price?: number;
+  wholesale_price?: number;
 }
 
 export interface UpdateProductData {
@@ -47,6 +55,10 @@ export interface UpdateProductData {
   categoryId?: string;
   status?: ProductStatus;
   image?: string | null; // Para mantener compatibilidad con el frontend actual
+  stock?: number;
+  cost?: number;
+  retail_price?: number;
+  wholesale_price?: number;
 }
 
 export const productService = {

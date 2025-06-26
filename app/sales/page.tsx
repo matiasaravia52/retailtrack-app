@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Table from '@/components/Table';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Input, { Select } from '@/components/Input';
 import styles from './page.module.css';
+import { createSale, getSales, cancelSale, Sale, SaleData, SaleItemData } from '@/services/saleService';
+import { productService } from '@/services/productService';
+import { formatDate } from '../../utils/dateUtils';
 
 export default function Sales() {
   // Estado para controlar la visualización del formulario
@@ -28,42 +30,83 @@ export default function Sales() {
     productId: '',
     quantity: '1'
   });
+  // Estado para las ventas cargadas desde el backend
+  const [sales, setSales] = useState<Sale[]>([]);
+  // Estado para los productos cargados desde el backend
+  const [products, setProducts] = useState<any[]>([]);
+  // Estado para el filtro de fecha
+  const [dateFilter, setDateFilter] = useState('');
+  // Estado para indicar carga
+  const [loading, setLoading] = useState(false);
+  // Estado para manejar errores
+  const [error, setError] = useState('');
+  // Estado para manejar errores de stock insuficiente
+  const [insufficientStock, setInsufficientStock] = useState<any[]>([]);
+  // Estado para datos del cliente
+  const [clientData, setClientData] = useState({
+    clientName: 'Cliente General',
+    clientDocument: '',
+    clientPhone: '',
+    clientEmail: ''
+  });
 
-  // Datos de ejemplo para las ventas
-  const sales = [
-    { id: '1', date: '15/04/2025 10:30', customer: 'Cliente General', total: 500, items: 3, status: 'Completada' },
-    { id: '2', date: '14/04/2025 16:45', customer: 'Cliente General', total: 750, items: 2, status: 'Completada' },
-    { id: '3', date: '14/04/2025 11:10', customer: 'Cliente General', total: 320, items: 1, status: 'Completada' },
-    { id: '4', date: '13/04/2025 15:20', customer: 'Cliente General', total: 1200, items: 4, status: 'Completada' },
-    { id: '5', date: '12/04/2025 09:45', customer: 'Cliente General', total: 180, items: 2, status: 'Completada' },
-  ];
+  // Cargar ventas y productos al montar el componente
+  useEffect(() => {
+    loadSales();
+    loadProducts();
+  }, []);
 
-  // Datos de ejemplo para los productos
-  const products = [
-    { id: '1', name: 'Laptop HP 15"', price: 799.99, stock: 15 },
-    { id: '2', name: 'Monitor Dell 24"', price: 249.99, stock: 8 },
-    { id: '3', name: 'Teclado Mecánico', price: 89.99, stock: 20 },
-    { id: '4', name: 'Mouse Inalámbrico', price: 29.99, stock: 25 },
-    { id: '5', name: 'Auriculares Bluetooth', price: 59.99, stock: 12 },
-  ];
+  // Función para cargar ventas desde el backend
+  const loadSales = async (filters = {}) => {
+    try {
+      setLoading(true);
+      setError('');
+      const result = await getSales(filters);
+      if (result.success && result.data) {
+        setSales(result.data);
+      } else {
+        setError(result.error || 'Error al cargar las ventas');
+      }
+    } catch (err) {
+      console.error('Error al cargar ventas:', err);
+      setError('Error al conectar con el servidor');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Definir el tipo para nuestras ventas
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  type Sale = {
-    id: string;
-    date: string;
-    customer: string;
-    total: number;
-    items: number;
-    status: string;
+  // Función para cargar productos desde el backend
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const productsData = await productService.getAllProducts();
+      setProducts(productsData);
+    } catch (err) {
+      console.error('Error al cargar productos:', err);
+      setError('Error al cargar productos');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Columnas para la tabla de ventas
   const columns = [
-    { key: 'date', header: 'Fecha' },
-    { key: 'customer', header: 'Cliente' },
     { 
-      key: 'total', 
+      key: 'date', 
+      header: 'Fecha',
+      render: (value: unknown) => {
+        if (typeof value === 'string') {
+          return formatDate(value);
+        }
+        return String(value);
+      }
+    },
+    { 
+      key: 'clientName', 
+      header: 'Cliente' 
+    },
+    { 
+      key: 'totalAmount', 
       header: 'Total',
       render: (value: unknown) => {
         if (typeof value === 'number') {
@@ -72,8 +115,37 @@ export default function Sales() {
         return String(value);
       }
     },
-    { key: 'items', header: 'Productos' },
-    { key: 'status', header: 'Estado' },
+    { 
+      key: 'items', 
+      header: 'Productos',
+      render: (value: unknown, row: any) => {
+        // Si tenemos los items cargados, mostramos la cantidad de items
+        if (row.items && Array.isArray(row.items)) {
+          return row.items.length;
+        }
+        // Si no, mostramos un valor por defecto
+        return '---';
+      }
+    },
+    { 
+      key: 'status', 
+      header: 'Estado',
+      render: (value: unknown) => {
+        if (typeof value === 'string') {
+          switch (value) {
+            case 'completed':
+              return 'Completada';
+            case 'pending':
+              return 'Pendiente';
+            case 'cancelled':
+              return 'Cancelada';
+            default:
+              return String(value);
+          }
+        }
+        return String(value);
+      }
+    },
   ];
 
   // Función para agregar un producto a la venta
@@ -86,7 +158,9 @@ export default function Sales() {
     if (!product) return;
 
     const quantity = parseInt(newItem.quantity);
-    const total = product.price * quantity;
+    // Usar el precio de retail del producto
+    const price = product.retail_price || product.price || 0;
+    const total = price * quantity;
 
     // Verificar si el producto ya está en la lista
     const existingItemIndex = saleItems.findIndex(item => item.productId === newItem.productId);
@@ -105,7 +179,7 @@ export default function Sales() {
           id: Date.now().toString(),
           productId: product.id,
           name: product.name,
-          price: product.price,
+          price: price,
           quantity,
           total
         }
@@ -117,6 +191,9 @@ export default function Sales() {
       productId: '',
       quantity: '1'
     });
+    
+    // Limpiar errores de stock insuficiente
+    setInsufficientStock([]);
   };
 
   // Función para eliminar un producto de la venta
@@ -139,21 +216,67 @@ export default function Sales() {
   };
 
   // Función para manejar el envío del formulario de venta
-  const handleSaleSubmit = () => {
+  const handleSaleSubmit = async () => {
     if (saleItems.length === 0) {
       alert('Debe agregar al menos un producto a la venta');
       return;
     }
     
-    console.log('Venta a registrar:', {
-      items: saleItems,
-      total: calculateTotal(),
-      date: new Date().toISOString()
-    });
+    // Preparar los datos de la venta para enviar al backend
+    const saleData: SaleData = {
+      clientName: clientData.clientName,
+      clientDocument: clientData.clientDocument || undefined,
+      clientPhone: clientData.clientPhone || undefined,
+      clientEmail: clientData.clientEmail || undefined,
+      items: saleItems.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        discount: 0 // Por defecto sin descuento
+      })),
+      taxAmount: 0, // Por defecto sin impuestos
+      discountAmount: 0, // Por defecto sin descuento general
+      paymentMethod: 'efectivo' // Por defecto efectivo
+    };
     
-    // Aquí iría la lógica para registrar la venta
-    setShowForm(false);
-    setSaleItems([]);
+    try {
+      setLoading(true);
+      setError('');
+      setInsufficientStock([]);
+      
+      const result = await createSale(saleData);
+      
+      if (result.success && result.data) {
+        // Venta registrada exitosamente
+        setShowForm(false);
+        setSaleItems([]);
+        // Recargar la lista de ventas
+        loadSales();
+        // Resetear datos del cliente
+        setClientData({
+          clientName: 'Cliente General',
+          clientDocument: '',
+          clientPhone: '',
+          clientEmail: ''
+        });
+        alert('Venta registrada exitosamente');
+      } else {
+        // Manejar errores
+        if (result.insufficientStock && result.insufficientStock.length > 0) {
+          setInsufficientStock(result.insufficientStock);
+          alert('Stock insuficiente para algunos productos');
+        } else {
+          setError(result.error || 'Error al registrar la venta');
+          alert(result.error || 'Error al registrar la venta');
+        }
+      }
+    } catch (err) {
+      console.error('Error al registrar venta:', err);
+      setError('Error al conectar con el servidor');
+      alert('Error al conectar con el servidor');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Función para manejar el envío del formulario desde el evento submit
@@ -162,12 +285,84 @@ export default function Sales() {
     handleSaleSubmit();
   };
 
-  // Filtrar ventas según el término de búsqueda
-  const filteredSales = sales.filter(sale => 
-    sale.date.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sale.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sale.status.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Manejar cambio en el filtro de fecha
+  const handleDateFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setDateFilter(value);
+    
+    // Aplicar filtros según la fecha seleccionada
+    let filters: any = {};
+    
+    if (value === 'today') {
+      const today = new Date();
+      const startDate = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+      const endDate = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+      filters = { startDate, endDate };
+    } else if (value === 'week') {
+      const today = new Date();
+      const day = today.getDay();
+      const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+      const startDate = new Date(new Date().setDate(diff));
+      startDate.setHours(0, 0, 0, 0);
+      filters = { startDate: startDate.toISOString() };
+    } else if (value === 'month') {
+      const today = new Date();
+      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      startDate.setHours(0, 0, 0, 0);
+      filters = { startDate: startDate.toISOString() };
+    }
+    
+    // Si hay un término de búsqueda, añadirlo al filtro
+    if (searchTerm) {
+      filters.clientName = searchTerm;
+    }
+    
+    // Cargar ventas con los filtros aplicados
+    loadSales(filters);
+  };
+  
+  // Manejar cambio en el término de búsqueda
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    // Si el usuario borra el término de búsqueda, recargar todas las ventas
+    if (!value) {
+      loadSales(dateFilter ? { dateFilter } : {});
+    }
+  };
+  
+  // Función para buscar ventas
+  const searchSales = () => {
+    const filters: any = {};
+    
+    if (searchTerm) {
+      filters.clientName = searchTerm;
+    }
+    
+    // Aplicar filtro de fecha si está seleccionado
+    if (dateFilter === 'today') {
+      const today = new Date();
+      const startDate = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+      const endDate = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+      filters.startDate = startDate;
+      filters.endDate = endDate;
+    } else if (dateFilter === 'week') {
+      const today = new Date();
+      const day = today.getDay();
+      const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+      const startDate = new Date(new Date().setDate(diff));
+      startDate.setHours(0, 0, 0, 0);
+      filters.startDate = startDate.toISOString();
+    } else if (dateFilter === 'month') {
+      const today = new Date();
+      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      startDate.setHours(0, 0, 0, 0);
+      filters.startDate = startDate.toISOString();
+    }
+    
+    loadSales(filters);
+  };
 
   return (
     <DashboardLayout 
@@ -225,7 +420,7 @@ export default function Sales() {
                   <option value="">Seleccionar producto</option>
                   {products.map(product => (
                     <option key={product.id} value={product.id}>
-                      {product.name} - ${product.price.toFixed(2)}
+                      {product.name} - ${product.retail_price ? product.retail_price.toFixed(2) : '0.00'}
                     </option>
                   ))}
                 </select>
@@ -253,38 +448,71 @@ export default function Sales() {
           </form>
         </Card>
       ) : (
-        <>
-          <div className={styles.header}>
-            <div className={styles.searchContainer}>
-              <input 
-                type="text" 
-                placeholder="Buscar ventas..." 
-                className={styles.searchInput} 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-
+        <div className={styles.salesList}>
           <div className={styles.filters}>
-            <select className={styles.filter} defaultValue="">
+            <Input 
+              label="Buscar"
+              type="text" 
+              placeholder="Buscar ventas..." 
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+            <Select
+              value={dateFilter}
+              onChange={handleDateFilterChange}
+            >
               <option value="">Todas las fechas</option>
               <option value="today">Hoy</option>
               <option value="week">Esta semana</option>
               <option value="month">Este mes</option>
-            </select>
+            </Select>
+            <Button onClick={searchSales}>Buscar</Button>
+            <Button onClick={() => setShowForm(true)}>Nueva Venta</Button>
           </div>
-
-          <Card>
+          
+          {loading ? (
+            <div className={styles.loading}>Cargando ventas...</div>
+          ) : error ? (
+            <div className={styles.error}>{error}</div>
+          ) : (
             <Table 
               columns={columns} 
-              data={filteredSales} 
+              data={sales} 
+              actions={[
+                { 
+                  label: 'Ver', 
+                  onClick: (item) => console.log('Ver venta:', item) 
+                },
+                { 
+                  label: 'Cancelar', 
+                  onClick: async (item) => {
+                    if (window.confirm('¿Está seguro de cancelar esta venta?')) {
+                      try {
+                        setLoading(true);
+                        const result = await cancelSale(item.id);
+                        if (result.success) {
+                          alert('Venta cancelada exitosamente');
+                          loadSales();
+                        } else {
+                          alert(result.error || 'Error al cancelar la venta');
+                        }
+                      } catch (err) {
+                        console.error('Error al cancelar venta:', err);
+                        alert('Error al conectar con el servidor');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }
+                  },
+                  variant: 'danger'
+                }
+              ]}
               keyExtractor={(item) => item.id} 
               onRowClick={(item) => console.log('Venta seleccionada:', item)}
               emptyMessage="No se encontraron ventas"
             />
-          </Card>
-        </>
+          )}
+        </div>
       )}
     </DashboardLayout>
   );
