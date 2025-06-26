@@ -25,68 +25,106 @@
   margin-bottom: 1.5rem;
 }
 
-.filter {
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
-}
-
-.saleForm {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
+.productForm {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
 }
 
 .productList {
   margin-top: 1rem;
-  border: 1px solid #eaeaea;
-  border-radius: 4px;
 }
 
 .productItem {
-  display: grid;
-  grid-template-columns: 3fr 1fr 1fr 1fr auto;
-  gap: 1rem;
-  padding: 0.75rem;
-  border-bottom: 1px solid #eaeaea;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
 }
 
-.productItem:last-child {
-  border-bottom: none;
+.productInfo {
+  flex: 1;
 }
 
-.productHeader {
-  font-weight: 600;
-  background-color: #f9fafb;
+.productName {
+  font-weight: bold;
+}
+
+.productPrice {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.productQuantity {
+  margin-right: 1rem;
+}
+
+.productTotal {
+  font-weight: bold;
 }
 
 .removeButton {
   background: none;
   border: none;
-  color: #e53e3e;
+  color: red;
   cursor: pointer;
-  font-size: 1rem;
 }
 
 .totalSection {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  margin-top: 1.5rem;
+  margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #eaeaea;
+  border-top: 1px solid #eee;
 }
 
 .totalLabel {
-  font-weight: 600;
-  font-size: 1.1rem;
+  font-weight: bold;
+  margin-right: 1rem;
 }
 
 .totalAmount {
-  font-weight: 700;
-  font-size: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.error {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+  color: #d32f2f;
+  background-color: #ffebee;
+  border-radius: 4px;
+}
+
+.clientForm {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.formRow {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.insufficientStock {
+  color: #d32f2f;
+  background-color: #ffebee;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
 }
 
 .addProductSection {
