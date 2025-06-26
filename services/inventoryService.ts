@@ -40,15 +40,43 @@ export const batchService = {
   async getAllBatches(): Promise<Batch[]> {
     try {
       const token = authService.getToken();
+      if (!token) {
+        console.error('No authentication token found');
+        throw new Error('No está autenticado. Por favor, inicie sesión nuevamente.');
+      }
+      
+      console.log('Fetching batches from:', `${API_URL}/api/batches`);
       const response = await axios.get(`${API_URL}/api/batches`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
+      
+      console.log('Batches response:', response.status);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching batches:', error);
-      throw error;
+      
+      if (error.response) {
+        // El servidor respondió con un código de estado fuera del rango 2xx
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 401) {
+          throw new Error('Sesión expirada. Por favor, inicie sesión nuevamente.');
+        } else if (error.response.status === 403) {
+          throw new Error('No tiene permisos para acceder a esta información.');
+        } else {
+          throw new Error(`Error del servidor: ${error.response.data?.message || 'Error desconocido'}`);
+        }
+      } else if (error.request) {
+        // La solicitud se hizo pero no se recibió respuesta
+        console.error('No response received:', error.request);
+        throw new Error('No se recibió respuesta del servidor. Verifique su conexión a internet.');
+      } else {
+        // Algo sucedió al configurar la solicitud
+        throw new Error(`Error al procesar la solicitud: ${error.message}`);
+      }
     }
   },
 

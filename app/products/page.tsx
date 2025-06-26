@@ -19,6 +19,7 @@ export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
   // Estado para el formulario de producto
   const [productForm, setProductForm] = useState({
+    id: null as string | null,
     name: '',
     description: '',
     categoryId: null as string | null,
@@ -26,10 +27,12 @@ export default function Products() {
     image: null as string | null,
     imageFile: null as File | null,
     stock: 0,
-    cost: 0,
     retail_price: 0,
     wholesale_price: 0
   });
+  
+  // Estado para controlar si estamos editando o creando un producto
+  const [isEditing, setIsEditing] = useState(false);
 
   // Estado para almacenar la lista de productos
   const [products, setProducts] = useState<ProductType[]>([]);
@@ -153,6 +156,26 @@ export default function Products() {
         );
       }
     },
+    {
+      key: 'actions',
+      header: 'Acciones',
+      render: (_: unknown, item: ProductType) => (
+        <div className={styles.actions}>
+          <button 
+            className={styles.editButton}
+            onClick={() => handleEditProduct(item)}
+          >
+            Editar
+          </button>
+          <button 
+            className={styles.deleteButton}
+            onClick={() => handleDeleteProduct(item.id)}
+          >
+            Eliminar
+          </button>
+        </div>
+      )
+    },
   ];
 
   // Función para manejar cambios en el formulario
@@ -181,28 +204,41 @@ export default function Products() {
       return;
     }
     
-    // Crear un nuevo producto con los datos del formulario
-    const newProductData = {
+    // Crear un nuevo producto o actualizar uno existente con los datos del formulario
+    const productData = {
       name: productForm.name,
       description: productForm.description,
       status: productForm.status,
       categoryId: productForm.categoryId || undefined,
       image: productForm.image || undefined,
-      stock: productForm.stock,
-      cost: productForm.cost,
-      retail_price: productForm.retail_price,
-      wholesale_price: productForm.wholesale_price
+      stock: Number(productForm.stock) || 0,
+      retail_price: Number(productForm.retail_price) || 0,
+      wholesale_price: Number(productForm.wholesale_price) || 0
     };
     
-    // Llamar al servicio para crear el producto
     try {
       setLoading(true);
-      const createdProduct = await productService.createProduct(newProductData);
-      // Actualizar la lista de productos
-      setProducts(prevProducts => [...prevProducts, createdProduct]);
-      console.log('Producto guardado:', createdProduct);
+      
+      if (isEditing && productForm.id) {
+        // Actualizar producto existente
+        const updatedProduct = await productService.updateProduct(productForm.id, productData);
+        // Actualizar la lista de productos
+        setProducts(prevProducts => 
+          prevProducts.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+        );
+        alert('Producto actualizado correctamente');
+      } else {
+        // Crear nuevo producto
+        const createdProduct = await productService.createProduct(productData);
+        // Actualizar la lista de productos
+        setProducts(prevProducts => [...prevProducts, createdProduct]);
+        alert('Producto creado correctamente');
+      }
+      
+      // Cerrar el formulario y limpiar los campos
       setShowForm(false);
       setProductForm({
+        id: null,
         name: '',
         description: '',
         categoryId: null,
@@ -210,15 +246,60 @@ export default function Products() {
         image: null,
         imageFile: null,
         stock: 0,
-        cost: 0,
         retail_price: 0,
         wholesale_price: 0
       });
+      setIsEditing(false);
     } catch (err) {
-      console.error('Error creating product:', err);
-      alert('Error al crear el producto. Inténtelo de nuevo más tarde.');
+      console.error('Error al guardar el producto:', err);
+      alert(`Error al ${isEditing ? 'actualizar' : 'crear'} el producto. Inténtelo de nuevo más tarde.`);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Función para editar un producto
+  const handleEditProduct = (product: ProductType) => {
+    // Llenar el formulario con los datos del producto
+    setProductForm({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      categoryId: product.categoryId || null,
+      status: product.status,
+      image: product.image || null,
+      imageFile: null,
+      stock: product.stock,
+      retail_price: product.retail_price,
+      wholesale_price: product.wholesale_price
+    });
+    
+    // Mostrar el formulario en modo edición
+    setIsEditing(true);
+    setShowForm(true);
+  };
+  
+  // Función para eliminar un producto
+  const handleDeleteProduct = async (id: string) => {
+    if (confirm('¿Está seguro de que desea eliminar este producto? Esta acción marcará el producto como inactivo.')) {
+      try {
+        setLoading(true);
+        const result = await productService.deleteProduct(id);
+        
+        if (result.success) {
+          // Actualizar la lista de productos
+          setProducts(prevProducts => prevProducts.filter(p => p.id !== id));
+          alert(result.message);
+        } else {
+          // Mostrar mensaje de error
+          alert(result.message);
+        }
+      } catch (err) {
+        console.error('Error al eliminar el producto:', err);
+        alert('Error al eliminar el producto. Inténtelo de nuevo más tarde.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -242,7 +323,7 @@ export default function Products() {
       }
     >
       {showForm ? (
-        <Card title="Nuevo Producto" footer={
+        <Card title={isEditing ? "Editar Producto" : "Nuevo Producto"} footer={
           <>
             <Button variant="secondary" onClick={() => setShowForm(false)}>Cancelar</Button>
             <Button onClick={handleSubmit}>Guardar</Button>
@@ -314,19 +395,6 @@ export default function Products() {
               onChange={(e) => setProductForm({
                 ...productForm,
                 stock: parseInt(e.target.value) || 0
-              })} 
-            />
-            
-            <Input 
-              label="Costo ($)" 
-              id="cost" 
-              name="cost" 
-              type="number"
-              step="0.01"
-              value={productForm.cost.toString()} 
-              onChange={(e) => setProductForm({
-                ...productForm,
-                cost: parseFloat(e.target.value) || 0
               })} 
             />
             

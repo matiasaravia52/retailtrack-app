@@ -32,7 +32,6 @@ export interface Product {
   createdAt?: string;
   updatedAt?: string;
   stock: number;
-  cost: number;
   retail_price: number;
   wholesale_price: number;
 }
@@ -44,7 +43,6 @@ export interface CreateProductData {
   status?: ProductStatus;
   image?: string | null; // Para mantener compatibilidad con el frontend actual
   stock?: number;
-  cost?: number;
   retail_price?: number;
   wholesale_price?: number;
 }
@@ -56,7 +54,6 @@ export interface UpdateProductData {
   status?: ProductStatus;
   image?: string | null; // Para mantener compatibilidad con el frontend actual
   stock?: number;
-  cost?: number;
   retail_price?: number;
   wholesale_price?: number;
 }
@@ -130,18 +127,34 @@ export const productService = {
   },
   
   // Delete product
-  async deleteProduct(id: string): Promise<void> {
+  async deleteProduct(id: string): Promise<{ success: boolean; message: string }> {
     try {
       const token = authService.getToken();
-      await axios.delete(`${API_URL}/api/products/${id}`, {
+      const response = await axios.delete(`${API_URL}/api/products/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-      // La API devuelve 204 sin contenido
-    } catch (error) {
+      
+      return { 
+        success: true, 
+        message: response.data?.message || 'Producto eliminado correctamente' 
+      };
+    } catch (error: any) {
       console.error(`Error deleting product ${id}:`, error);
-      throw error;
+      
+      // Manejar diferentes tipos de errores
+      if (error.response) {
+        // El servidor respondió con un código de estado fuera del rango 2xx
+        const errorMessage = error.response.data?.error || 'Error al eliminar el producto';
+        return { success: false, message: errorMessage };
+      } else if (error.request) {
+        // La solicitud se hizo pero no se recibió respuesta
+        return { success: false, message: 'No se recibió respuesta del servidor' };
+      } else {
+        // Algo sucedió al configurar la solicitud
+        return { success: false, message: 'Error al procesar la solicitud' };
+      }
     }
   },
   
