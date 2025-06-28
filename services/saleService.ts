@@ -1,4 +1,4 @@
-import { getAuthToken } from '@/utils/auth';
+import { authService } from './authService';
 
 // Interfaces para los datos de ventas
 export interface SaleItemData {
@@ -9,6 +9,7 @@ export interface SaleItemData {
 }
 
 export interface SaleData {
+  userId?: string;  // Añadido para identificar al usuario que realiza la venta
   clientName: string;
   clientDocument?: string;
   clientPhone?: string;
@@ -74,7 +75,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 // Crear una nueva venta
 export const createSale = async (saleData: SaleData): Promise<{ success: boolean; data?: Sale; error?: string; insufficientStock?: any[] }> => {
   try {
-    const token = getAuthToken();
+    const token = authService.getToken();
     if (!token) {
       return { success: false, error: 'No autorizado' };
     }
@@ -108,7 +109,7 @@ export const createSale = async (saleData: SaleData): Promise<{ success: boolean
 // Obtener una venta por ID
 export const getSaleById = async (id: string): Promise<{ success: boolean; data?: Sale; error?: string }> => {
   try {
-    const token = getAuthToken();
+    const token = authService.getToken();
     if (!token) {
       return { success: false, error: 'No autorizado' };
     }
@@ -136,7 +137,7 @@ export const getSaleById = async (id: string): Promise<{ success: boolean; data?
 // Obtener todas las ventas con filtros
 export const getSales = async (filters: SaleFilters = {}): Promise<{ success: boolean; data?: Sale[]; total?: number; error?: string }> => {
   try {
-    const token = getAuthToken();
+    const token = authService.getToken();
     if (!token) {
       return { success: false, error: 'No autorizado' };
     }
@@ -181,7 +182,7 @@ export const getSales = async (filters: SaleFilters = {}): Promise<{ success: bo
 // Cancelar una venta
 export const cancelSale = async (id: string): Promise<{ success: boolean; data?: Sale; error?: string }> => {
   try {
-    const token = getAuthToken();
+    const token = authService.getToken();
     if (!token) {
       return { success: false, error: 'No autorizado' };
     }

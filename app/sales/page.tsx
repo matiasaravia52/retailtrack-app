@@ -8,6 +8,7 @@ import Table from '@/components/Table';
 import Input, { Select } from '@/components/Input';
 import styles from './page.module.css';
 import { createSale, getSales, cancelSale, Sale, SaleData, SaleItemData } from '@/services/saleService';
+import { authService } from '@/services/authService';
 import { productService } from '@/services/productService';
 import { formatDate } from '../../utils/dateUtils';
 
@@ -223,7 +224,9 @@ export default function Sales() {
     }
     
     // Preparar los datos de la venta para enviar al backend
+    const currentUser = authService.getCurrentUser();
     const saleData: SaleData = {
+      userId: currentUser?.id, // Añadir el ID del usuario actual
       clientName: clientData.clientName,
       clientDocument: clientData.clientDocument || undefined,
       clientPhone: clientData.clientPhone || undefined,
@@ -395,9 +398,9 @@ export default function Sales() {
                   {saleItems.map(item => (
                     <div key={item.id} className={styles.productItem}>
                       <div>{item.name}</div>
-                      <div>${item.price.toFixed(2)}</div>
+                      <div>${typeof item.price === 'string' ? parseFloat(item.price).toFixed(2) : item.price.toFixed(2)}</div>
                       <div>{item.quantity}</div>
-                      <div>${item.total.toFixed(2)}</div>
+                      <div>${typeof item.total === 'string' ? parseFloat(item.total).toFixed(2) : item.total.toFixed(2)}</div>
                       <button 
                         type="button" 
                         className={styles.removeButton}
@@ -420,7 +423,7 @@ export default function Sales() {
                   <option value="">Seleccionar producto</option>
                   {products.map(product => (
                     <option key={product.id} value={product.id}>
-                      {product.name} - ${product.retail_price ? product.retail_price.toFixed(2) : '0.00'}
+                      {product.name} - ${product.retail_price ? (typeof product.retail_price === 'string' ? parseFloat(product.retail_price).toFixed(2) : product.retail_price.toFixed(2)) : '0.00'}
                     </option>
                   ))}
                 </select>

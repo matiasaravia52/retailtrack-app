@@ -26,7 +26,6 @@ export default function Products() {
     status: ProductStatus.ACTIVE,
     image: null as string | null,
     imageFile: null as File | null,
-    stock: 0,
     retail_price: 0,
     wholesale_price: 0
   });
@@ -130,8 +129,9 @@ export default function Products() {
       key: 'retail_price', 
       header: 'Precio minorista',
       render: (value: unknown) => {
-        // Asegurarse de que price sea un número
-        const price = typeof value === 'number' ? value : 0;
+        // Convertir a número si es string o usar el valor si ya es número
+        const price = typeof value === 'string' ? parseFloat(value) : 
+                     typeof value === 'number' ? value : 0;
         return `$${price.toFixed(2)}`;
       }
     },
@@ -139,8 +139,9 @@ export default function Products() {
       key: 'wholesale_price', 
       header: 'Precio mayorista',
       render: (value: unknown) => {
-        // Asegurarse de que price sea un número
-        const price = typeof value === 'number' ? value : 0;
+        // Convertir a número si es string o usar el valor si ya es número
+        const price = typeof value === 'string' ? parseFloat(value) : 
+                     typeof value === 'number' ? value : 0;
         return `$${price.toFixed(2)}`;
       }
     },
@@ -211,7 +212,6 @@ export default function Products() {
       status: productForm.status,
       categoryId: productForm.categoryId || undefined,
       image: productForm.image || undefined,
-      stock: Number(productForm.stock) || 0,
       retail_price: Number(productForm.retail_price) || 0,
       wholesale_price: Number(productForm.wholesale_price) || 0
     };
@@ -245,7 +245,6 @@ export default function Products() {
         status: ProductStatus.ACTIVE,
         image: null,
         imageFile: null,
-        stock: 0,
         retail_price: 0,
         wholesale_price: 0
       });
@@ -269,7 +268,6 @@ export default function Products() {
       status: product.status,
       image: product.image || null,
       imageFile: null,
-      stock: product.stock,
       retail_price: product.retail_price,
       wholesale_price: product.wholesale_price
     });
@@ -385,18 +383,6 @@ export default function Products() {
                 <option value={ProductStatus.INACTIVE}>Inactivo</option>
               </select>
             </div>
-            
-            <Input 
-              label="Stock inicial" 
-              id="stock" 
-              name="stock" 
-              type="number"
-              value={productForm.stock.toString()} 
-              onChange={(e) => setProductForm({
-                ...productForm,
-                stock: parseInt(e.target.value) || 0
-              })} 
-            />
             
             <Input 
               label="Precio minorista ($)" 
