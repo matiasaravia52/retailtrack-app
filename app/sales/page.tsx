@@ -34,6 +34,11 @@ export default function Sales() {
     productId: '',
     quantity: '1'
   });
+  
+  // Estado para la búsqueda de productos
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
   // Estado para las ventas cargadas desde el backend
   const [sales, setSales] = useState<Sale[]>([]);
   // Estado para los productos cargados desde el backend
@@ -76,6 +81,16 @@ export default function Sales() {
       setCustomers([]);
     }
   }, [customerSearchTerm]);
+  
+  // Filtrar productos cuando cambia el término de búsqueda
+  useEffect(() => {
+    if (productSearchTerm.length >= 2) {
+      searchProductsByName(productSearchTerm);
+    } else if (productSearchTerm === '') {
+      setFilteredProducts([]);
+      setShowProductDropdown(false);
+    }
+  }, [productSearchTerm]);
 
   // Función para cargar ventas desde el backend
   const loadSales = async (filters = {}) => {
@@ -223,7 +238,9 @@ export default function Sales() {
       return;
     }
 
-    const product = products.find(p => p.id === newItem.productId);
+    // Buscar el producto en los productos filtrados primero, luego en todos los productos
+    const product = filteredProducts.find(p => p.id === newItem.productId) || 
+                   products.find(p => p.id === newItem.productId);
     if (!product) return;
 
     const quantity = parseInt(newItem.quantity);
@@ -282,6 +299,52 @@ export default function Sales() {
       ...newItem,
       [name]: value
     });
+  };
+  
+  // Función para buscar productos por nombre
+  const searchProductsByName = async (query: string) => {
+    try {
+      if (query.length >= 2) {
+        const result = await productService.searchProducts(query);
+        if (result && Array.isArray(result)) {
+          // Filtrar solo productos activos con stock disponible
+          const activeProducts = result.filter(product => 
+            product.status === 'active' && product.stock > 0
+          );
+          setFilteredProducts(activeProducts);
+          setShowProductDropdown(true);
+        } else {
+          setFilteredProducts([]);
+        }
+      } else {
+        setFilteredProducts([]);
+        setShowProductDropdown(false);
+      }
+    } catch (err) {
+      console.error('Error al buscar productos:', err);
+      setFilteredProducts([]);
+    }
+  };
+  
+  // Función para seleccionar un producto
+  const handleSelectProduct = (product: any) => {
+    setNewItem({
+      ...newItem,
+      productId: product.id
+    });
+    setProductSearchTerm(product.name);
+    setShowProductDropdown(false);
+  };
+  
+  // Función para manejar cambios en la búsqueda de productos
+  const handleProductSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setProductSearchTerm(value);
+    if (value.length >= 2) {
+      setShowProductDropdown(true);
+    } else {
+      setShowProductDropdown(false);
+    }
   };
 
   // Función para manejar el envío del formulario de venta
@@ -515,7 +578,61 @@ export default function Sales() {
               
               <h3>Productos</h3>
               
-              {saleItems.length > 0 && (
+              <div className={styles.addProductSection}>
+                <div className={styles.productSearch}>
+                  <Input
+                    label="Buscar Producto"
+                    type="text"
+                    value={productSearchTerm}
+                    onChange={handleProductSearchChange}
+                    placeholder="Nombre del producto..."
+                  />
+                  {showProductDropdown && filteredProducts.length > 0 && (
+                    <div className={styles.productDropdown}>
+                      {filteredProducts.map(product => (
+                        <div 
+                          key={product.id} 
+                          className={styles.productOption}
+                          onClick={() => handleSelectProduct(product)}
+                        >
+                          <div className={styles.productOptionName}>{product.name}</div>
+                          <div className={styles.productOptionDetails}>
+                            <span>${product.retail_price ? (typeof product.retail_price === 'string' ? parseFloat(product.retail_price).toFixed(2) : product.retail_price.toFixed(2)) : '0.00'}</span>
+                            <span> • Stock: {product.stock}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div className={styles.quantityField}>
+                  <Input
+                    label="Cantidad"
+                    type="number" 
+                    name="quantity" 
+                    value={newItem.quantity} 
+                    onChange={handleNewItemChange}
+                    min="1"
+                    placeholder="Cantidad"
+                  />
+                </div>
+                
+                <div className={styles.addButtonContainer}>
+                  <Button 
+                    type="button" 
+                    onClick={addProductToSale}
+                    disabled={!newItem.productId || !newItem.quantity || parseInt(newItem.quantity) <= 0}
+                    className={styles.addButton}
+                  >
+                    Agregar
+                  </Button>
+                </div>
+              </div>
+              
+              <h4 className={styles.productsListTitle}>Productos agregados</h4>
+              
+              {saleItems.length > 0 ? (
                 <div className={styles.productList}>
                   <div className={`${styles.productItem} ${styles.productHeader}`}>
                     <div>Producto</div>
@@ -541,37 +658,9 @@ export default function Sales() {
                     </div>
                   ))}
                 </div>
+              ) : (
+                <div className={styles.emptyProductList}>No hay productos agregados</div>
               )}
-              
-              <div className={styles.addProductSection}>
-                <select 
-                  name="productId" 
-                  value={newItem.productId} 
-                  onChange={handleNewItemChange}
-                  className={styles.filter}
-                >
-                  <option value="">Seleccionar producto</option>
-                  {products.map(product => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} - ${product.retail_price ? (typeof product.retail_price === 'string' ? parseFloat(product.retail_price).toFixed(2) : product.retail_price.toFixed(2)) : '0.00'}
-                    </option>
-                  ))}
-                </select>
-                
-                <input 
-                  type="number" 
-                  name="quantity" 
-                  value={newItem.quantity} 
-                  onChange={handleNewItemChange}
-                  min="1"
-                  className={styles.searchInput}
-                  placeholder="Cantidad"
-                />
-                
-                <Button type="button" onClick={addProductToSale}>
-                  Agregar
-                </Button>
-              </div>
               
               <div className={styles.totalSection}>
                 <div className={styles.totalLabel}>Total:</div>
