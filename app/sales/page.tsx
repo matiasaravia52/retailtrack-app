@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
@@ -13,6 +14,7 @@ import { productService } from '@/services/productService';
 import { formatDate } from '../../utils/dateUtils';
 
 export default function Sales() {
+  const router = useRouter();
   // Estado para controlar la visualización del formulario
   const [showForm, setShowForm] = useState(false);
   // Estado para el término de búsqueda
@@ -484,7 +486,7 @@ export default function Sales() {
               actions={[
                 { 
                   label: 'Ver', 
-                  onClick: (item) => console.log('Ver venta:', item) 
+                  onClick: (item) => router.push(`/sales/${item.id}`) 
                 },
                 { 
                   label: 'Cancelar', 
