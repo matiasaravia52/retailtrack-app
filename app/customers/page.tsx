@@ -1,14 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import DashboardLayout from '@/components/Layout';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import Table from '@/components/Table';
+import Table from '@/components/Table/Table';
 import Input from '@/components/Input';
 import styles from './page.module.css';
 import { customerService, Customer, CreateCustomerData } from '@/services/customerService';
 import { Toaster, toast } from 'react-hot-toast';
+
+// Definición del tipo Column para la tabla
+interface Column<T> {
+  key: string;
+  header: string;
+  render?: (value: unknown, item?: T) => ReactNode;
+}
 
 export default function Customers() {
   // Estado para controlar la visualización del formulario
@@ -18,6 +25,7 @@ export default function Customers() {
   // Estado para el formulario de cliente
   const [customerForm, setCustomerForm] = useState<CreateCustomerData>({
     name: '',
+    type: 'individual', // Valor por defecto
     email: '',
     phone: '',
     address: ''
@@ -49,11 +57,20 @@ export default function Customers() {
   };
 
   // Columnas para la tabla de clientes
-  const columns = [
+  const columns: Column<Customer>[] = [
     { key: 'name', header: 'Nombre' },
     { key: 'email', header: 'Email' },
     { key: 'phone', header: 'Teléfono' },
     { key: 'address', header: 'Dirección' },
+    { 
+      key: 'status', 
+      header: 'Estado',
+      render: (value: unknown) => (
+        <span className={`${styles.statusBadge} ${(value as string) === 'active' ? styles.active : styles.inactive}`}>
+          {(value as string) === 'active' ? 'Activo' : 'Inactivo'}
+        </span>
+      )
+    },
   ];
 
   // Función para manejar cambios en el formulario
@@ -80,6 +97,7 @@ export default function Customers() {
       setShowForm(false);
       setCustomerForm({
         name: '',
+        type: 'individual',
         email: '',
         phone: '',
         address: ''
@@ -112,11 +130,25 @@ export default function Customers() {
     }
   };
 
+  // Función para cambiar el estado de un cliente (activar/desactivar)
+  const handleToggleStatus = async (customer: Customer) => {
+    try {
+      const newStatus = customer.status === 'active' ? 'inactive' : 'active';
+      await customerService.toggleCustomerStatus(customer.id, newStatus);
+      toast.success(`Cliente ${newStatus === 'active' ? 'activado' : 'desactivado'} correctamente`);
+      loadCustomers(); // Recargar los clientes
+    } catch (error) {
+      console.error('Error al cambiar el estado del cliente:', error);
+      toast.error('Error al cambiar el estado del cliente');
+    }
+  };
+
   // Función para editar un cliente
   const handleEdit = (customer: Customer) => {
     setSelectedCustomer(customer);
     setCustomerForm({
       name: customer.name,
+      type: customer.type,
       email: customer.email,
       phone: customer.phone,
       address: customer.address
@@ -138,7 +170,7 @@ export default function Customers() {
       actions={
         <Button onClick={() => {
           setSelectedCustomer(null);
-          setCustomerForm({ name: '', email: '', phone: '', address: '' });
+          setCustomerForm({ name: '', type: 'individual', email: '', phone: '', address: '' });
           setShowForm(true);
         }}>Nuevo Cliente</Button>
       }
@@ -150,7 +182,7 @@ export default function Customers() {
             <Button variant="secondary" onClick={() => {
               setShowForm(false);
               setSelectedCustomer(null);
-              setCustomerForm({ name: '', email: '', phone: '', address: '' });
+              setCustomerForm({ name: '', type: 'individual', email: '', phone: '', address: '' });
             }}>Cancelar</Button>
             <Button onClick={handleSubmit}>Guardar</Button>
           </>
@@ -164,6 +196,21 @@ export default function Customers() {
               onChange={handleInputChange} 
               required 
             />
+            <div className={styles.selectContainer}>
+              <label htmlFor="type" className={styles.selectLabel}>Tipo de Cliente</label>
+              <select
+                id="type"
+                name="type"
+                value={customerForm.type}
+                onChange={(e) => setCustomerForm({...customerForm, type: e.target.value})}
+                className={styles.selectInput}
+                required
+              >
+                <option value="individual">Individual</option>
+                <option value="business">Empresa</option>
+                <option value="other">Otro</option>
+              </select>
+            </div>
             <Input 
               label="Email" 
               id="email" 
@@ -219,6 +266,11 @@ export default function Customers() {
                   { 
                     label: 'Editar', 
                     onClick: (item: Customer) => handleEdit(item) 
+                  },
+                  { 
+                    label: 'Cambiar Estado', 
+                    onClick: (item: Customer) => handleToggleStatus(item),
+                    variant: 'secondary'
                   },
                   { 
                     label: 'Eliminar', 
