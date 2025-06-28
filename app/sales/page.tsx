@@ -11,6 +11,7 @@ import styles from './page.module.css';
 import { createSale, getSales, cancelSale, Sale, SaleData, SaleItemData } from '@/services/saleService';
 import { authService } from '@/services/authService';
 import { productService } from '@/services/productService';
+import { customerService, Customer } from '@/services/customerService';
 import { formatDate } from '../../utils/dateUtils';
 
 export default function Sales() {
@@ -52,12 +53,29 @@ export default function Sales() {
     clientPhone: '',
     clientEmail: ''
   });
+  
+  // Estado para el cliente seleccionado
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  
+  // Estado para la búsqueda de clientes
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
   // Cargar ventas y productos al montar el componente
   useEffect(() => {
     loadSales();
     loadProducts();
   }, []);
+  
+  // Cargar clientes cuando cambia el término de búsqueda
+  useEffect(() => {
+    if (customerSearchTerm.length >= 2) {
+      searchCustomers(customerSearchTerm);
+    } else if (customerSearchTerm === '') {
+      setCustomers([]);
+    }
+  }, [customerSearchTerm]);
 
   // Función para cargar ventas desde el backend
   const loadSales = async (filters = {}) => {
@@ -89,6 +107,54 @@ export default function Sales() {
       setError('Error al cargar productos');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Función para buscar clientes
+  const searchCustomers = async (query: string) => {
+    try {
+      const result = await customerService.searchCustomers(query);
+      if (result && Array.isArray(result)) {
+        // Filtrar solo clientes activos
+        const activeCustomers = result.filter((customer: Customer) => customer.status === 'active');
+        setCustomers(activeCustomers);
+      } else {
+        setCustomers([]);
+      }
+    } catch (err) {
+      console.error('Error al buscar clientes:', err);
+      setCustomers([]);
+    }
+  };
+  
+  // Función para seleccionar un cliente
+  const handleSelectCustomer = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setClientData({
+      clientName: customer.name,
+      clientDocument: customer.type || '',
+      clientPhone: customer.phone || '',
+      clientEmail: customer.email || ''
+    });
+    setShowCustomerDropdown(false);
+    setCustomerSearchTerm(customer.name);
+  };
+  
+  // Función para manejar cambios en la búsqueda de clientes
+  const handleCustomerSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCustomerSearchTerm(value);
+    setShowCustomerDropdown(true);
+    
+    // Si el campo está vacío, resetear los datos del cliente
+    if (!value) {
+      setSelectedCustomer(null);
+      setClientData({
+        clientName: 'Cliente General',
+        clientDocument: '',
+        clientPhone: '',
+        clientEmail: ''
+      });
     }
   };
 
@@ -264,6 +330,8 @@ export default function Sales() {
           clientPhone: '',
           clientEmail: ''
         });
+        setSelectedCustomer(null);
+        setCustomerSearchTerm('');
         alert('Venta registrada exitosamente');
       } else {
         // Manejar errores
@@ -385,6 +453,66 @@ export default function Sales() {
         }>
           <form className={styles.saleForm} onSubmit={handleFormSubmit}>
             <div>
+              <h3>Datos del Cliente</h3>
+              <div className={styles.customerSection}>
+                <div className={styles.customerSearch}>
+                  <Input
+                    label="Buscar Cliente"
+                    type="text"
+                    value={customerSearchTerm}
+                    onChange={handleCustomerSearchChange}
+                    placeholder="Nombre del cliente..."
+                  />
+                  {showCustomerDropdown && customers.length > 0 && (
+                    <div className={styles.customerDropdown}>
+                      {customers.map(customer => (
+                        <div 
+                          key={customer.id} 
+                          className={styles.customerOption}
+                          onClick={() => handleSelectCustomer(customer)}
+                        >
+                          <div className={styles.customerName}>{customer.name}</div>
+                          <div className={styles.customerDetails}>
+                            {customer.email && <span>{customer.email}</span>}
+                            {customer.phone && <span> • {customer.phone}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {selectedCustomer && (
+                  <div className={styles.selectedCustomer}>
+                    <div className={styles.customerInfo}>
+                      <strong>{selectedCustomer.name}</strong>
+                      <div>
+                        {selectedCustomer.type && <span>Tipo: {selectedCustomer.type}</span>}
+                        {selectedCustomer.email && <span> • Email: {selectedCustomer.email}</span>}
+                        {selectedCustomer.phone && <span> • Tel: {selectedCustomer.phone}</span>}
+                        {selectedCustomer.address && <span> • Dir: {selectedCustomer.address}</span>}
+                      </div>
+                    </div>
+                    <button 
+                      type="button" 
+                      className={styles.removeButton}
+                      onClick={() => {
+                        setSelectedCustomer(null);
+                        setClientData({
+                          clientName: 'Cliente General',
+                          clientDocument: '',
+                          clientPhone: '',
+                          clientEmail: ''
+                        });
+                        setCustomerSearchTerm('');
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+              
               <h3>Productos</h3>
               
               {saleItems.length > 0 && (
