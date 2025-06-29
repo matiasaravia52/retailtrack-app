@@ -8,7 +8,7 @@ import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input from '@/components/Input';
 import ImageUpload from '@/components/ImageUpload';
-import { productService, Product as ProductType, ProductStatus } from '@/services/productService';
+import { productService, Product as ProductType, ProductStatus, ProductFilters } from '@/services/productService';
 import { categoryService, Category } from '@/services/categoryService';
 import styles from './page.module.css';
 
@@ -17,6 +17,13 @@ export default function Products() {
   const [showForm, setShowForm] = useState(false);
   // Estado para el término de búsqueda
   const [searchTerm, setSearchTerm] = useState('');
+  // Estado para los filtros
+  const [filters, setFilters] = useState<ProductFilters>({
+    status: undefined,
+    categoryId: undefined,
+    sortBy: 'updatedAt',
+    sortOrder: 'DESC'
+  });
   // Estado para el formulario de producto
   const [productForm, setProductForm] = useState({
     id: null as string | null,
@@ -46,12 +53,12 @@ export default function Products() {
   // Estado para manejar errores de categorías
   const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  // Cargar productos al montar el componente
+  // Cargar productos al montar el componente y cuando cambien los filtros
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const data = await productService.getAllProducts();
+        const data = await productService.getAllProducts(filters);
         setProducts(data);
         setError(null);
       } catch (err) {
@@ -63,7 +70,7 @@ export default function Products() {
     };
 
     fetchProducts();
-  }, []);
+  }, [filters]);
   
   // Cargar categorías al montar el componente
   useEffect(() => {
@@ -307,11 +314,56 @@ export default function Products() {
     handleSubmit();
   };
 
-  // Filtrar productos según el término de búsqueda
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Manejar cambios en los filtros
+  const handleFilterChange = (name: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [name]: value === '' ? undefined : value
+    }));
+  };
+
+  // Manejar cambios en el ordenamiento
+  const handleSortChange = (field: string) => {
+    setFilters(prev => ({
+      ...prev,
+      sortBy: field,
+      sortOrder: prev.sortBy === field && prev.sortOrder === 'ASC' ? 'DESC' : 'ASC'
+    }));
+  };
+
+  // Manejar búsqueda
+  const handleSearch = async () => {
+    if (searchTerm.trim() === '') {
+      // Si no hay término de búsqueda, cargar todos los productos con los filtros actuales
+      try {
+        setLoading(true);
+        const data = await productService.getAllProducts(filters);
+        setProducts(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError('Error al cargar productos. Inténtelo de nuevo más tarde.');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Si hay término de búsqueda, realizar búsqueda con los filtros actuales
+      try {
+        setLoading(true);
+        const data = await productService.searchProducts(searchTerm, filters);
+        setProducts(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error searching products:', err);
+        setError('Error al buscar productos. Inténtelo de nuevo más tarde.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Filtrar productos según el término de búsqueda (para búsqueda local)
+  const filteredProducts = products;
 
   return (
     <DashboardLayout 
@@ -427,7 +479,79 @@ export default function Products() {
                 className={styles.searchInput} 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
+              <Button 
+                type="button" 
+                onClick={handleSearch} 
+                variant="primary"
+                className={styles.searchButton}
+              >
+                Buscar
+              </Button>
+            </div>
+            
+            <div className={styles.filtersContainer}>
+              <div className={styles.filterGroup}>
+                <label htmlFor="statusFilter">Estado:</label>
+                <select
+                  id="statusFilter"
+                  className={styles.select}
+                  value={filters.status || ''}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  <option value={ProductStatus.ACTIVE}>Activos</option>
+                  <option value={ProductStatus.INACTIVE}>Inactivos</option>
+                </select>
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <label htmlFor="categoryFilter">Categoría:</label>
+                <select
+                  id="categoryFilter"
+                  className={styles.select}
+                  value={filters.categoryId || ''}
+                  onChange={(e) => handleFilterChange('categoryId', e.target.value)}
+                >
+                  <option value="">Todas</option>
+                  {categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <label htmlFor="sortByFilter">Ordenar por:</label>
+                <select
+                  id="sortByFilter"
+                  className={styles.select}
+                  value={filters.sortBy || 'updatedAt'}
+                  onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                >
+                  <option value="name">Nombre</option>
+                  <option value="createdAt">Fecha de creación</option>
+                  <option value="updatedAt">Fecha de actualización</option>
+                  <option value="retail_price">Precio minorista</option>
+                  <option value="wholesale_price">Precio mayorista</option>
+                  <option value="stock">Stock</option>
+                </select>
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <label htmlFor="sortOrderFilter">Orden:</label>
+                <select
+                  id="sortOrderFilter"
+                  className={styles.select}
+                  value={filters.sortOrder || 'DESC'}
+                  onChange={(e) => handleFilterChange('sortOrder', e.target.value as 'ASC' | 'DESC')}
+                >
+                  <option value="ASC">Ascendente</option>
+                  <option value="DESC">Descendente</option>
+                </select>
+              </div>
             </div>
           </div>
 

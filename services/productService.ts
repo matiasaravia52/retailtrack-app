@@ -58,13 +58,32 @@ export interface UpdateProductData {
   wholesale_price?: number;
 }
 
+export interface ProductFilters {
+  status?: string;
+  categoryId?: string;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
+}
+
 export const productService = {
   
   // Get all products
-  async getAllProducts(): Promise<Product[]> {
+  async getAllProducts(filters?: ProductFilters): Promise<Product[]> {
     try {
       const token = authService.getToken();
-      const response = await axios.get(`${API_URL}/api/products`, {
+      
+      // Construir parámetros de consulta
+      let queryParams = '';
+      if (filters) {
+        const params = new URLSearchParams();
+        if (filters.status) params.append('status', filters.status);
+        if (filters.categoryId) params.append('categoryId', filters.categoryId);
+        if (filters.sortBy) params.append('sortBy', filters.sortBy);
+        if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+        queryParams = `?${params.toString()}`;
+      }
+      
+      const response = await axios.get(`${API_URL}/api/products${queryParams}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -159,10 +178,22 @@ export const productService = {
   },
   
   // Search products
-  async searchProducts(query: string): Promise<Product[]> {
+  async searchProducts(query: string, filters?: ProductFilters): Promise<Product[]> {
     try {
       const token = authService.getToken();
-      const response = await axios.get(`${API_URL}/api/products/search?query=${encodeURIComponent(query)}`, {
+      
+      // Construir parámetros de consulta
+      const params = new URLSearchParams();
+      params.append('query', query);
+      
+      if (filters) {
+        if (filters.status) params.append('status', filters.status);
+        if (filters.categoryId) params.append('categoryId', filters.categoryId);
+        if (filters.sortBy) params.append('sortBy', filters.sortBy);
+        if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+      }
+      
+      const response = await axios.get(`${API_URL}/api/products/search?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
