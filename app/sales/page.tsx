@@ -39,8 +39,14 @@ export default function Sales() {
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
-  // Estado para las ventas cargadas desde el backend
-  const [sales, setSales] = useState<Sale[]>([]);
+  // Estado para las ventas cargadas desde el backend con paginación
+  const [salesData, setSalesData] = useState<{
+    items: Sale[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }>({ items: [], total: 0, page: 1, limit: 10, totalPages: 0 });
   // Estado para los productos cargados desde el backend
   const [products, setProducts] = useState<any[]>([]);
   // Estados para filtros
@@ -48,6 +54,10 @@ export default function Sales() {
   const [statusFilter, setStatusFilter] = useState('');
   const [clientFilter, setClientFilter] = useState('');
   const [startDate, setStartDate] = useState('');
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [endDate, setEndDate] = useState('');
   // Estado para indicar carga
   const [loading, setLoading] = useState(false);
@@ -71,9 +81,20 @@ export default function Sales() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
-  // Cargar ventas y productos al montar el componente
+  // Efecto para cargar ventas al montar el componente o cambiar la paginación
   useEffect(() => {
-    loadSales();
+    const filters = {
+      clientName: clientFilter,
+      status: statusFilter,
+      saleType: dateFilter === 'custom' ? undefined : dateFilter,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined
+    };
+    loadSales(filters);
+  }, [currentPage, itemsPerPage, clientFilter, statusFilter, dateFilter, startDate, endDate]);
+  
+  // Efecto para cargar productos y clientes al montar el componente
+  useEffect(() => {
     loadProducts();
   }, []);
   
@@ -101,9 +122,19 @@ export default function Sales() {
     try {
       setLoading(true);
       setError('');
-      const result = await getSales(filters);
+      const result = await getSales({
+        ...filters,
+        limit: itemsPerPage,
+        offset: (currentPage - 1) * itemsPerPage
+      });
       if (result.success && result.data) {
-        setSales(result.data);
+        setSalesData({
+          items: result.data,
+          total: result.total || 0,
+          page: currentPage,
+          limit: itemsPerPage,
+          totalPages: Math.ceil((result.total || 0) / itemsPerPage)
+        });
       } else {
         setError(result.error || 'Error al cargar las ventas');
       }
@@ -113,6 +144,17 @@ export default function Sales() {
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Función para cambiar de página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+  
+  // Función para cambiar el número de elementos por página
+  const handleLimitChange = (limit: number) => {
+    setItemsPerPage(limit);
+    setCurrentPage(1); // Resetear a la primera página cuando cambia el límite
   };
 
   // Función para cargar productos desde el backend
@@ -508,6 +550,31 @@ export default function Sales() {
     }
   };
   
+  // Función para aplicar filtros
+  const handleApplyFilters = () => {
+    const filters: any = {};
+    
+    if (clientFilter) filters.clientName = clientFilter;
+    if (statusFilter) filters.status = statusFilter;
+    
+    // Filtros de fecha
+    if (dateFilter === 'custom') {
+      if (startDate) filters.startDate = startDate;
+      if (endDate) filters.endDate = endDate;
+    } else if (dateFilter) {
+      filters.saleType = dateFilter;
+    }
+    
+    // Reiniciar la paginación cuando se aplican nuevos filtros
+    setCurrentPage(1);
+    
+    loadSales({
+      ...filters,
+      limit: itemsPerPage,
+      offset: 0 // Volver a la primera página
+    });
+  };
+
   // Función para buscar ventas con todos los filtros aplicados
   const searchSales = () => {
     const filters: any = {};
@@ -555,7 +622,14 @@ export default function Sales() {
       }
     }
     
-    loadSales(filters);
+    // Reiniciar la paginación cuando se realiza una búsqueda
+    setCurrentPage(1);
+    
+    loadSales({
+      ...filters,
+      limit: itemsPerPage,
+      offset: 0 // Volver a la primera página
+    });
   };
 
   return (
@@ -828,7 +902,7 @@ export default function Sales() {
           ) : (
             <Table 
               columns={columns} 
-              data={sales} 
+              data={salesData.items} 
               actions={[
                 { 
                   label: 'Ver', 
@@ -863,6 +937,74 @@ export default function Sales() {
               emptyMessage="No se encontraron ventas"
             />
           )}
+          
+          {/* Controles de paginación */}
+          <div className={styles.paginationControls}>
+            <div className={styles.paginationInfo}>
+              {loading ? (
+                <p>Cargando...</p>
+              ) : error ? (
+                <p className={styles.error}>{error}</p>
+              ) : salesData.items.length === 0 ? (
+                <p>No hay ventas para mostrar</p>
+              ) : (
+                <p>
+                  Mostrando {salesData.items.length} de {salesData.total} ventas
+                </p>
+              )}
+            </div>
+            
+            <div className={styles.paginationActions}>
+              <div className={styles.limitSelector}>
+                <label>Mostrar:</label>
+                <select 
+                  value={itemsPerPage} 
+                  onChange={(e) => handleLimitChange(Number(e.target.value))}
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+              </div>
+              
+              <div className={styles.pageButtons}>
+                <button 
+                  onClick={() => handlePageChange(1)} 
+                  disabled={currentPage === 1}
+                  className={styles.pageButton}
+                >
+                  &laquo;
+                </button>
+                <button 
+                  onClick={() => handlePageChange(currentPage - 1)} 
+                  disabled={currentPage === 1}
+                  className={styles.pageButton}
+                >
+                  &lsaquo;
+                </button>
+                
+                <span className={styles.pageInfo}>
+                  Página {currentPage} de {salesData.totalPages || 1}
+                </span>
+                
+                <button 
+                  onClick={() => handlePageChange(currentPage + 1)} 
+                  disabled={currentPage >= salesData.totalPages}
+                  className={styles.pageButton}
+                >
+                  &rsaquo;
+                </button>
+                <button 
+                  onClick={() => handlePageChange(salesData.totalPages)} 
+                  disabled={currentPage >= salesData.totalPages}
+                  className={styles.pageButton}
+                >
+                  &raquo;
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </DashboardLayout>
