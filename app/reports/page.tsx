@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { reportService, NetProfitReportData } from '@/services/reportService';
 import styles from './page.module.css';
-import Button from '@/components/Button/Button';
-import Input from '@/components/Input/Input';
+import Button from '@/components/Button';
+import Input from '@/components/Input';
 import Spinner from '@/components/Spinner/Spinner';
+import DashboardLayout from '@/components/Layout';
+import Card from '@/components/Card';
 // Función para formatear moneda
 const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('es-AR', {
@@ -19,10 +21,34 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<NetProfitReportData | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string>('custom');
+  
+  // Obtener la fecha actual
+  const today = new Date();
+  const currentDate = today.toISOString().split('T')[0];
+  
+  // Calcular fechas predefinidas
+  const getLastMonthDate = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().split('T')[0];
+  };
+  
+  const getLast3MonthsDate = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 3);
+    return date.toISOString().split('T')[0];
+  };
+  
+  const getLastYearDate = () => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 1);
+    return date.toISOString().split('T')[0];
+  };
   
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: ''
+    startDate: getLastMonthDate(),
+    endDate: currentDate
   });
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,14 +57,50 @@ export default function ReportsPage() {
       ...prev,
       [name]: value
     }));
+    setActiveFilter('custom');
   };
-
-  const generateReport = async () => {
+  
+  const applyPredefinedFilter = (filterType: string) => {
+    setActiveFilter(filterType);
+    let newFilters = { startDate: '', endDate: '' };
+    
+    switch (filterType) {
+      case 'lastMonth':
+        newFilters = {
+          startDate: getLastMonthDate(),
+          endDate: currentDate
+        };
+        break;
+      case 'last3Months':
+        newFilters = {
+          startDate: getLast3MonthsDate(),
+          endDate: currentDate
+        };
+        break;
+      case 'lastYear':
+        newFilters = {
+          startDate: getLastYearDate(),
+          endDate: currentDate
+        };
+        break;
+      default:
+        return;
+    }
+    
+    setFilters(newFilters);
+    
+    // Generar el reporte automáticamente al seleccionar un filtro predefinido
+    setTimeout(() => {
+      generateReportWithFilters(newFilters);
+    }, 100);
+  };
+  
+  const generateReportWithFilters = async (reportFilters: { startDate: string, endDate: string }) => {
     setLoading(true);
     setError(null);
     
     try {
-      const result = await reportService.getNetProfitReport(filters);
+      const result = await reportService.getNetProfitReport(reportFilters);
       
       if (result.success && result.data) {
         setReportData(result.data);
@@ -55,41 +117,82 @@ export default function ReportsPage() {
     }
   };
 
+  const generateReport = () => {
+    generateReportWithFilters(filters);
+  };
+
+  useEffect(() => {
+    // Cargar datos iniciales al montar el componente
+    // Iniciar con el filtro de último mes
+    applyPredefinedFilter('lastMonth');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h1>Reportes de Ganancias</h1>
-      </div>
+    <DashboardLayout title="Reportes">
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h1>Reportes de Ganancias</h1>
+        </div>
       
-      <div className={styles.filters}>
-        <div className={styles.filterGroup}>
-          <Input
-            label="Fecha Inicio"
-            type="date"
-            name="startDate"
-            id="startDate"
-            value={filters.startDate}
-            onChange={handleFilterChange}
-          />
-        </div>
-        
-        <div className={styles.filterGroup}>
-          <Input
-            label="Fecha Fin"
-            type="date"
-            name="endDate"
-            id="endDate"
-            value={filters.endDate}
-            onChange={handleFilterChange}
-          />
-        </div>
-        
-        <div className={styles.filterActions}>
-          <Button type="button" onClick={generateReport} disabled={loading}>
-            {loading ? <Spinner size="sm" /> : 'Generar Reporte'}
+      <Card className={styles.filtersCard}>
+        <div className={styles.predefinedFilters}>
+          <Button 
+            type="button" 
+            onClick={() => applyPredefinedFilter('lastMonth')} 
+            variant={activeFilter === 'lastMonth' ? 'primary' : 'secondary'}
+            className={styles.filterButton}
+          >
+            Último Mes
+          </Button>
+          <Button 
+            type="button" 
+            onClick={() => applyPredefinedFilter('last3Months')} 
+            variant={activeFilter === 'last3Months' ? 'primary' : 'secondary'}
+            className={styles.filterButton}
+          >
+            Últimos 3 Meses
+          </Button>
+          <Button 
+            type="button" 
+            onClick={() => applyPredefinedFilter('lastYear')} 
+            variant={activeFilter === 'lastYear' ? 'primary' : 'secondary'}
+            className={styles.filterButton}
+          >
+            Último Año
           </Button>
         </div>
-      </div>
+        
+        <div className={styles.filters}>
+          <div className={styles.filterGroup}>
+            <Input
+              label="Fecha Inicio"
+              type="date"
+              name="startDate"
+              id="startDate"
+              value={filters.startDate}
+              onChange={handleFilterChange}
+            />
+          </div>
+          
+          <div className={styles.filterGroup}>
+            <Input
+              label="Fecha Fin"
+              type="date"
+              name="endDate"
+              id="endDate"
+              value={filters.endDate}
+              onChange={handleFilterChange}
+            />
+          </div>
+          
+          <div className={styles.filterActions}>
+            <Button type="button" onClick={generateReport} disabled={loading} variant="primary">
+              {loading ? <Spinner size="sm" /> : 'Generar Reporte'}
+            </Button>
+          </div>
+        </div>
+      </Card>
       
       {error && (
         <div className={styles.error}>
@@ -98,7 +201,7 @@ export default function ReportsPage() {
       )}
       
       {reportData && (
-        <div className={styles.reportContainer}>
+        <Card className={styles.reportContainer}>
           <h2>Reporte de Ganancias Netas</h2>
           
           <div className={styles.reportGrid}>
@@ -147,8 +250,9 @@ export default function ReportsPage() {
               <p className={styles.reportValue}>{reportData.profitMargin.toFixed(2)}%</p>
             </div>
           </div>
-        </div>
+        </Card>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
