@@ -63,31 +63,45 @@ export interface ProductFilters {
   categoryId?: string;
   sortBy?: string;
   sortOrder?: 'ASC' | 'DESC';
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export const productService = {
   
   // Get all products
-  async getAllProducts(filters?: ProductFilters): Promise<Product[]> {
+  async getAllProducts(filters?: ProductFilters): Promise<PaginatedResult<Product>> {
     try {
       const token = authService.getToken();
       
       // Construir parámetros de consulta
-      let queryParams = '';
+      const queryParams = new URLSearchParams();
+      
       if (filters) {
-        const params = new URLSearchParams();
-        if (filters.status) params.append('status', filters.status);
-        if (filters.categoryId) params.append('categoryId', filters.categoryId);
-        if (filters.sortBy) params.append('sortBy', filters.sortBy);
-        if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
-        queryParams = `?${params.toString()}`;
+        if (filters.status) queryParams.append('status', filters.status);
+        if (filters.categoryId) queryParams.append('categoryId', filters.categoryId);
+        if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
+        if (filters.sortOrder) queryParams.append('sortOrder', filters.sortOrder);
+        if (filters.page) queryParams.append('page', filters.page.toString());
+        if (filters.limit) queryParams.append('limit', filters.limit.toString());
       }
       
-      const response = await axios.get(`${API_URL}/api/products${queryParams}`, {
+      const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+      
+      const response = await axios.get(`${API_URL}/api/products${queryString}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
+      
       return response.data;
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -178,26 +192,29 @@ export const productService = {
   },
   
   // Search products
-  async searchProducts(query: string, filters?: ProductFilters): Promise<Product[]> {
+  async searchProducts(query: string, filters?: ProductFilters): Promise<PaginatedResult<Product>> {
     try {
       const token = authService.getToken();
       
       // Construir parámetros de consulta
-      const params = new URLSearchParams();
-      params.append('query', query);
+      const queryParams = new URLSearchParams();
+      queryParams.append('query', query);
       
       if (filters) {
-        if (filters.status) params.append('status', filters.status);
-        if (filters.categoryId) params.append('categoryId', filters.categoryId);
-        if (filters.sortBy) params.append('sortBy', filters.sortBy);
-        if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+        if (filters.status) queryParams.append('status', filters.status);
+        if (filters.categoryId) queryParams.append('categoryId', filters.categoryId);
+        if (filters.sortBy) queryParams.append('sortBy', filters.sortBy);
+        if (filters.sortOrder) queryParams.append('sortOrder', filters.sortOrder);
+        if (filters.page) queryParams.append('page', filters.page.toString());
+        if (filters.limit) queryParams.append('limit', filters.limit.toString());
       }
       
-      const response = await axios.get(`${API_URL}/api/products/search?${params.toString()}`, {
+      const response = await axios.get(`${API_URL}/api/products/search?${queryParams.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
+      
       return response.data;
     } catch (error) {
       console.error('Error searching products:', error);

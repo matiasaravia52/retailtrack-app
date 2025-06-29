@@ -8,7 +8,7 @@ import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input from '@/components/Input';
 import ImageUpload from '@/components/ImageUpload';
-import { productService, Product as ProductType, ProductStatus, ProductFilters } from '@/services/productService';
+import { productService, Product as ProductType, ProductStatus, ProductFilters, PaginatedResult } from '@/services/productService';
 import { categoryService, Category } from '@/services/categoryService';
 import styles from './page.module.css';
 
@@ -22,7 +22,9 @@ export default function Products() {
     status: undefined,
     categoryId: undefined,
     sortBy: 'updatedAt',
-    sortOrder: 'DESC'
+    sortOrder: 'DESC',
+    page: 1,
+    limit: 10
   });
   // Estado para el formulario de producto
   const [productForm, setProductForm] = useState({
@@ -40,8 +42,17 @@ export default function Products() {
   // Estado para controlar si estamos editando o creando un producto
   const [isEditing, setIsEditing] = useState(false);
 
-  // Estado para almacenar la lista de productos
-  const [products, setProducts] = useState<ProductType[]>([]);
+  // Estado para almacenar la lista de productos y la información de paginación
+  const [productData, setProductData] = useState<PaginatedResult<ProductType>>({ 
+    items: [], 
+    total: 0, 
+    page: 1, 
+    limit: 10, 
+    totalPages: 0 
+  });
+  
+  // Acceso rápido a la lista de productos
+  const products = productData.items;
   // Estado para almacenar la lista de categorías
   const [categories, setCategories] = useState<Category[]>([]);
   // Estado para indicar carga
@@ -59,7 +70,7 @@ export default function Products() {
       try {
         setLoading(true);
         const data = await productService.getAllProducts(filters);
-        setProducts(data);
+        setProductData(data);
         setError(null);
       } catch (err) {
         console.error('Error fetching products:', err);
@@ -169,18 +180,18 @@ export default function Products() {
       header: 'Acciones',
       render: (_: unknown, item: ProductType) => (
         <div className={styles.actions}>
-          <button 
-            className={styles.editButton}
-            onClick={() => handleEditProduct(item)}
+          <Button 
+            variant="secondary" 
+            onClick={() => handleEdit(item)}
           >
             Editar
-          </button>
-          <button 
-            className={styles.deleteButton}
-            onClick={() => handleDeleteProduct(item.id)}
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={() => handleDelete(item.id)}
           >
             Eliminar
-          </button>
+          </Button>
         </div>
       )
     },
@@ -230,15 +241,20 @@ export default function Products() {
         // Actualizar producto existente
         const updatedProduct = await productService.updateProduct(productForm.id, productData);
         // Actualizar la lista de productos
-        setProducts(prevProducts => 
-          prevProducts.map(p => p.id === updatedProduct.id ? updatedProduct : p)
-        );
+        setProductData(prevData => ({
+          ...prevData,
+          items: prevData.items.map((p: ProductType) => p.id === updatedProduct.id ? updatedProduct : p)
+        }));
         alert('Producto actualizado correctamente');
       } else {
         // Crear nuevo producto
         const createdProduct = await productService.createProduct(productData);
         // Actualizar la lista de productos
-        setProducts(prevProducts => [...prevProducts, createdProduct]);
+        setProductData(prevData => ({
+          ...prevData,
+          items: [...prevData.items, createdProduct],
+          total: prevData.total + 1
+        }));
         alert('Producto creado correctamente');
       }
       
@@ -263,40 +279,42 @@ export default function Products() {
       setLoading(false);
     }
   };
-  
   // Función para editar un producto
-  const handleEditProduct = (product: ProductType) => {
-    // Llenar el formulario con los datos del producto
+  const handleEdit = (product: ProductType) => {
+    // Actualizar el formulario con los datos del producto seleccionado
     setProductForm({
       id: product.id,
       name: product.name,
-      description: product.description,
+      description: product.description || '',
       categoryId: product.categoryId || null,
-      status: product.status,
+      status: product.status as ProductStatus,
       image: product.image || null,
       imageFile: null,
-      retail_price: product.retail_price,
-      wholesale_price: product.wholesale_price
+      retail_price: product.retail_price || 0,
+      wholesale_price: product.wholesale_price || 0
     });
     
-    // Mostrar el formulario en modo edición
+    // Indicar que estamos en modo edición
     setIsEditing(true);
+    // Mostrar el formulario
     setShowForm(true);
   };
   
   // Función para eliminar un producto
-  const handleDeleteProduct = async (id: string) => {
-    if (confirm('¿Está seguro de que desea eliminar este producto? Esta acción marcará el producto como inactivo.')) {
+  const handleDelete = async (id: string) => {
+    if (window.confirm('¿Está seguro de que desea eliminar este producto?')) {
       try {
         setLoading(true);
         const result = await productService.deleteProduct(id);
         
-        if (result.success) {
-          // Actualizar la lista de productos
-          setProducts(prevProducts => prevProducts.filter(p => p.id !== id));
-          alert(result.message);
-        } else {
-          // Mostrar mensaje de error
+        // Actualizar la lista de productos después de eliminar
+        setProductData(prevData => ({
+          ...prevData,
+          items: prevData.items.filter(p => p.id !== id),
+          total: prevData.total - 1
+        }));
+        
+        if (result && result.message) {
           alert(result.message);
         }
       } catch (err) {
@@ -315,11 +333,32 @@ export default function Products() {
   };
 
   // Manejar cambios en los filtros
-  const handleFilterChange = (name: string, value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [name]: value === '' ? undefined : value
-    }));
+  const handleFilterChange = (name: string, value: string | number) => {
+    // Resetear la página a 1 cuando se cambia cualquier filtro excepto la página
+    if (name !== 'page' && name !== 'limit') {
+      setFilters(prev => ({
+        ...prev,
+        [name]: value === '' ? undefined : value,
+        page: 1 // Resetear a la primera página
+      }));
+    } else {
+      setFilters(prev => ({
+        ...prev,
+        [name]: value === '' ? undefined : value
+      }));
+    }
+  };
+  
+  // Manejar cambio de página
+  const handlePageChange = (newPage: number) => {
+    if (newPage > 0 && newPage <= productData.totalPages) {
+      handleFilterChange('page', newPage);
+    }
+  };
+  
+  // Manejar cambio en el límite de elementos por página
+  const handleLimitChange = (newLimit: number) => {
+    handleFilterChange('limit', newLimit);
   };
 
   // Manejar cambios en el ordenamiento
@@ -338,7 +377,7 @@ export default function Products() {
       try {
         setLoading(true);
         const data = await productService.getAllProducts(filters);
-        setProducts(data);
+        setProductData(data);
         setError(null);
       } catch (err) {
         console.error('Error fetching products:', err);
@@ -351,7 +390,7 @@ export default function Products() {
       try {
         setLoading(true);
         const data = await productService.searchProducts(searchTerm, filters);
-        setProducts(data);
+        setProductData(data);
         setError(null);
       } catch (err) {
         console.error('Error searching products:', err);
@@ -571,6 +610,92 @@ export default function Products() {
                 onRowClick={(item) => console.log('Producto seleccionado:', item)}
                 emptyMessage="No se encontraron productos"
               />
+              
+              <div className={styles.pagination}>
+                <div className={styles.paginationInfo}>
+                  Mostrando {products.length} de {productData.total} productos | 
+                  Página {productData.page} de {productData.totalPages}
+                </div>
+                
+                <div className={styles.paginationControls}>
+                  <div className={styles.limitSelector}>
+                    <label htmlFor="limitSelector">Mostrar:</label>
+                    <select
+                      id="limitSelector"
+                      className={styles.select}
+                      value={filters.limit || 10}
+                      onChange={(e) => handleLimitChange(Number(e.target.value))}
+                    >
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                    </select>
+                  </div>
+                  
+                  <div className={styles.pageButtons}>
+                    <button 
+                      className={styles.pageButton} 
+                      onClick={() => handlePageChange(1)}
+                      disabled={productData.page === 1}
+                    >
+                      &laquo;
+                    </button>
+                    <button 
+                      className={styles.pageButton} 
+                      onClick={() => handlePageChange(productData.page - 1)}
+                      disabled={productData.page === 1}
+                    >
+                      &lt;
+                    </button>
+                    
+                    {/* Mostrar números de página */}
+                    {Array.from({ length: Math.min(5, productData.totalPages) }, (_, i) => {
+                      // Calcular qué números de página mostrar
+                      let pageNum;
+                      if (productData.totalPages <= 5) {
+                        // Si hay 5 o menos páginas, mostrar todas
+                        pageNum = i + 1;
+                      } else if (productData.page <= 3) {
+                        // Si estamos en las primeras páginas
+                        pageNum = i + 1;
+                      } else if (productData.page >= productData.totalPages - 2) {
+                        // Si estamos en las últimas páginas
+                        pageNum = productData.totalPages - 4 + i;
+                      } else {
+                        // Si estamos en el medio
+                        pageNum = productData.page - 2 + i;
+                      }
+                      
+                      return (
+                        <button 
+                          key={pageNum}
+                          className={`${styles.pageButton} ${pageNum === productData.page ? styles.activePage : ''}`}
+                          onClick={() => handlePageChange(pageNum)}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    
+                    <button 
+                      className={styles.pageButton} 
+                      onClick={() => handlePageChange(productData.page + 1)}
+                      disabled={productData.page === productData.totalPages}
+                    >
+                      &gt;
+                    </button>
+                    <button 
+                      className={styles.pageButton} 
+                      onClick={() => handlePageChange(productData.totalPages)}
+                      disabled={productData.page === productData.totalPages}
+                    >
+                      &raquo;
+                    </button>
+                  </div>
+                </div>
+              </div>
             </Card>
           )}
       </>
