@@ -18,6 +18,7 @@ const allNavLinks = [
   { name: 'Categorías', path: '/categories', requiredPermission: 'categories:view' },
   { name: 'Inventario', path: '/inventory', requiredPermission: 'inventory:view' },
   { name: 'Ventas', path: '/sales', requiredPermission: 'sales:view' },
+  { name: 'Reportes', path: '/reports', requiredPermission: 'reports:view' },
   { name: 'Usuarios', path: '/users', requiredPermission: 'users:view' },
   { name: 'Roles y Permisos', path: '/admin/roles', requiredPermission: 'roles:manage' },
   { name: 'Clientes', path: '/customers', requiredPermission: 'customers:view' },
