@@ -25,6 +25,48 @@
   margin-bottom: 1.5rem;
 }
 
+.filtersContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  width: 100%;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 20px;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 150px;
+  flex: 1;
+}
+
+.filterActions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.filterTitle {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 10px;
+  color: #495057;
+}
+
+.salesListHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  margin-top: 20px;
+}
+
 .productForm {
   margin-bottom: 1rem;
   display: flex;

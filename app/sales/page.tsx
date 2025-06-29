@@ -43,8 +43,12 @@ export default function Sales() {
   const [sales, setSales] = useState<Sale[]>([]);
   // Estado para los productos cargados desde el backend
   const [products, setProducts] = useState<any[]>([]);
-  // Estado para el filtro de fecha
+  // Estados para filtros
   const [dateFilter, setDateFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   // Estado para indicar carga
   const [loading, setLoading] = useState(false);
   // Estado para manejar errores
@@ -116,7 +120,11 @@ export default function Sales() {
     try {
       setLoading(true);
       const productsData = await productService.getAllProducts();
-      setProducts(productsData);
+      if (productsData && Array.isArray(productsData.items)) {
+        setProducts(productsData.items);
+      } else {
+        setProducts([]);
+      }
     } catch (err) {
       console.error('Error al cargar productos:', err);
       setError('Error al cargar productos');
@@ -306,9 +314,9 @@ export default function Sales() {
     try {
       if (query.length >= 2) {
         const result = await productService.searchProducts(query);
-        if (result && Array.isArray(result)) {
+        if (result && result.items && Array.isArray(result.items)) {
           // Filtrar solo productos activos con stock disponible
-          const activeProducts = result.filter(product => 
+          const activeProducts = result.items.filter(product => 
             product.status === 'active' && product.stock > 0
           );
           setFilteredProducts(activeProducts);
@@ -421,40 +429,72 @@ export default function Sales() {
     handleSaleSubmit();
   };
 
-  // Manejar cambio en el filtro de fecha
+  // Manejar cambio en el filtro de fecha predefinido
   const handleDateFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setDateFilter(value);
+    
+    // Limpiar fechas personalizadas si se selecciona un filtro predefinido
+    if (value) {
+      setStartDate('');
+      setEndDate('');
+    }
     
     // Aplicar filtros según la fecha seleccionada
     let filters: any = {};
     
     if (value === 'today') {
       const today = new Date();
-      const startDate = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-      const endDate = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-      filters = { startDate, endDate };
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      filters = { startDate: todayStart.toISOString(), endDate: todayEnd.toISOString() };
     } else if (value === 'week') {
       const today = new Date();
       const day = today.getDay();
       const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-      const startDate = new Date(new Date().setDate(diff));
-      startDate.setHours(0, 0, 0, 0);
-      filters = { startDate: startDate.toISOString() };
+      const weekStart = new Date(today.getFullYear(), today.getMonth(), diff, 0, 0, 0);
+      filters = { startDate: weekStart.toISOString() };
     } else if (value === 'month') {
       const today = new Date();
-      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      startDate.setHours(0, 0, 0, 0);
-      filters = { startDate: startDate.toISOString() };
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0);
+      filters = { startDate: monthStart.toISOString() };
     }
     
-    // Si hay un término de búsqueda, añadirlo al filtro
-    if (searchTerm) {
-      filters.clientName = searchTerm;
-    }
+    // Aplicar otros filtros si existen
+    if (searchTerm) filters.clientName = searchTerm;
+    if (statusFilter) filters.status = statusFilter;
+    if (clientFilter) filters.clientName = clientFilter;
     
     // Cargar ventas con los filtros aplicados
     loadSales(filters);
+  };
+  
+  // Manejar cambio en el filtro de estado
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setStatusFilter(value);
+  };
+  
+  // Manejar cambio en el filtro de cliente
+  const handleClientFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setClientFilter(value);
+  };
+  
+  // Manejar cambio en la fecha de inicio
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setStartDate(value);
+    // Limpiar filtro predefinido si se selecciona una fecha personalizada
+    if (value) setDateFilter('');
+  };
+  
+  // Manejar cambio en la fecha de fin
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEndDate(value);
+    // Limpiar filtro predefinido si se selecciona una fecha personalizada
+    if (value) setDateFilter('');
   };
   
   // Manejar cambio en el término de búsqueda
@@ -468,33 +508,51 @@ export default function Sales() {
     }
   };
   
-  // Función para buscar ventas
+  // Función para buscar ventas con todos los filtros aplicados
   const searchSales = () => {
     const filters: any = {};
     
-    if (searchTerm) {
+    // Aplicar filtro de cliente por término de búsqueda o filtro específico
+    if (clientFilter) {
+      filters.clientName = clientFilter;
+    } else if (searchTerm) {
       filters.clientName = searchTerm;
     }
     
-    // Aplicar filtro de fecha si está seleccionado
+    // Aplicar filtro de estado
+    if (statusFilter) {
+      filters.status = statusFilter;
+    }
+    
+    // Aplicar filtros de fecha
     if (dateFilter === 'today') {
       const today = new Date();
-      const startDate = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-      const endDate = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-      filters.startDate = startDate;
-      filters.endDate = endDate;
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0);
+      const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+      filters.startDate = todayStart.toISOString();
+      filters.endDate = todayEnd.toISOString();
     } else if (dateFilter === 'week') {
       const today = new Date();
       const day = today.getDay();
       const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-      const startDate = new Date(new Date().setDate(diff));
-      startDate.setHours(0, 0, 0, 0);
-      filters.startDate = startDate.toISOString();
+      const weekStart = new Date(today.getFullYear(), today.getMonth(), diff, 0, 0, 0);
+      filters.startDate = weekStart.toISOString();
     } else if (dateFilter === 'month') {
       const today = new Date();
-      const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-      startDate.setHours(0, 0, 0, 0);
-      filters.startDate = startDate.toISOString();
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0);
+      filters.startDate = monthStart.toISOString();
+    } else if (startDate || endDate) {
+      // Usar fechas personalizadas si están definidas
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        filters.startDate = start.toISOString();
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filters.endDate = end.toISOString();
+      }
     }
     
     loadSales(filters);
@@ -671,25 +729,96 @@ export default function Sales() {
         </Card>
       ) : (
         <div className={styles.salesList}>
-          <div className={styles.filters}>
-            <Input 
-              label="Buscar"
-              type="text" 
-              placeholder="Buscar ventas..." 
-              value={searchTerm}
-              onChange={handleSearchChange}
-            />
-            <Select
-              value={dateFilter}
-              onChange={handleDateFilterChange}
-            >
-              <option value="">Todas las fechas</option>
-              <option value="today">Hoy</option>
-              <option value="week">Esta semana</option>
-              <option value="month">Este mes</option>
-            </Select>
-            <Button onClick={searchSales}>Buscar</Button>
-            <Button onClick={() => setShowForm(true)}>Nueva Venta</Button>
+          <Card>
+            <h3 className={styles.filterTitle}>Filtros de Ventas</h3>
+            <div className={styles.filtersContainer}>
+              <div className={styles.filterGroup}>
+                <Input 
+                  label="Cliente"
+                  type="text" 
+                  placeholder="Nombre del cliente..." 
+                  value={clientFilter}
+                  onChange={handleClientFilterChange}
+                />
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <Select
+                  label="Estado"
+                  value={statusFilter}
+                  onChange={handleStatusFilterChange}
+                >
+                  <option value="">Todos los estados</option>
+                  <option value="completed">Completada</option>
+                  <option value="cancelled">Cancelada</option>
+                  <option value="pending">Pendiente</option>
+                </Select>
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <Select
+                  label="Período"
+                  value={dateFilter}
+                  onChange={handleDateFilterChange}
+                >
+                  <option value="">Seleccionar período</option>
+                  <option value="today">Hoy</option>
+                  <option value="week">Esta semana</option>
+                  <option value="month">Este mes</option>
+                </Select>
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <Input 
+                  label="Desde"
+                  type="date" 
+                  value={startDate}
+                  onChange={handleStartDateChange}
+                />
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <Input 
+                  label="Hasta"
+                  type="date" 
+                  value={endDate}
+                  onChange={handleEndDateChange}
+                />
+              </div>
+              
+              <div className={styles.filterActions}>
+                <Button onClick={searchSales}>Aplicar Filtros</Button>
+                <Button 
+                  onClick={() => {
+                    setSearchTerm('');
+                    setDateFilter('');
+                    setStatusFilter('');
+                    setClientFilter('');
+                    setStartDate('');
+                    setEndDate('');
+                    loadSales({});
+                  }}
+                  variant="secondary"
+                >
+                  Limpiar
+                </Button>
+              </div>
+            </div>
+          </Card>
+          
+          <div className={styles.salesListHeader}>
+            <h2>Lista de Ventas</h2>
+            <div className={styles.searchContainer}>
+              <Input 
+                label=""
+                type="text" 
+                placeholder="Búsqueda rápida..." 
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className={styles.searchInput}
+              />
+              <Button onClick={() => setShowForm(true)}>Nueva Venta</Button>
+            </div>
           </div>
           
           {loading ? (

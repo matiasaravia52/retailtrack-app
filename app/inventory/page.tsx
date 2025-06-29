@@ -48,12 +48,15 @@ export default function Inventory() {
         setLoading(true);
         // Cargar productos
         const productsData = await productService.getAllProducts();
-        setProducts(productsData);
         
-        // Calcular inventario para cada producto
-        const inventoryItems: InventoryItem[] = [];
-        
-        for (const product of productsData) {
+        // Verificar que productsData tenga la estructura esperada
+        if (productsData && Array.isArray(productsData.items)) {
+          setProducts(productsData.items);
+          
+          // Calcular inventario para cada producto
+          const inventoryItems: InventoryItem[] = [];
+          
+          for (const product of productsData.items) {
           try {
             // Obtener lotes del producto
             const batches = await batchService.getBatchesByProduct(product.id);
@@ -83,6 +86,11 @@ export default function Inventory() {
         }
         
         setInventory(inventoryItems);
+        } else {
+          console.error('El formato de datos de productos no es el esperado:', productsData);
+          setError('Error en el formato de datos recibidos');
+          setProducts([]);
+        }
         setLoading(false);
       } catch (err: any) {
         setError(err.message || 'Error cargando datos');
@@ -142,12 +150,15 @@ export default function Inventory() {
       
       // Recargar los datos de inventario
       const productsData = await productService.getAllProducts();
-      setProducts(productsData);
       
-      // Recalcular inventario
-      const inventoryItems: InventoryItem[] = [];
-      
-      for (const product of productsData) {
+      // Verificar que productsData tenga la estructura esperada
+      if (productsData && Array.isArray(productsData.items)) {
+        setProducts(productsData.items);
+        
+        // Recalcular inventario
+        const inventoryItems: InventoryItem[] = [];
+        
+        for (const product of productsData.items) {
         try {
           const batches = await batchService.getBatchesByProduct(product.id);
           const totalStock = batches.reduce((sum, batch) => sum + batch.availableQuantity, 0);
@@ -170,6 +181,11 @@ export default function Inventory() {
       }
       
       setInventory(inventoryItems);
+      } else {
+        console.error('El formato de datos de productos no es el esperado:', productsData);
+        setError('Error en el formato de datos recibidos');
+        setProducts([]);
+      }
       
       // Cerrar formulario y resetear
       setShowForm(false);
