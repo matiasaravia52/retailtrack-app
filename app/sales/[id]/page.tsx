@@ -18,7 +18,7 @@ export default function SaleDetail() {
 
   useEffect(() => {
     const fetchSaleDetail = async () => {
-      if (!params.id) {
+      if (!params || !params.id) {
         setError('ID de venta no proporcionado');
         setLoading(false);
         return;
@@ -41,7 +41,7 @@ export default function SaleDetail() {
     };
 
     fetchSaleDetail();
-  }, [params.id]);
+  }, [params?.id]);
 
   const getStatusText = (status: string) => {
     switch (status) {
