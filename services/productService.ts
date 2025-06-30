@@ -75,6 +75,15 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+export interface ImportResult {
+  success: boolean;
+  totalProcessed: number;
+  successCount: number;
+  errorCount: number;
+  errors: Array<{ row: number; message: string }>;
+  successItems: Array<{ name: string; id: string }>;
+}
+
 export const productService = {
   
   // Get all products
@@ -163,31 +172,118 @@ export const productService = {
   async deleteProduct(id: string): Promise<{ success: boolean; message: string }> {
     try {
       const token = authService.getToken();
+      
+      if (!token) {
+        return { success: false, message: 'No autorizado' };
+      }
+      
       const response = await axios.delete(`${API_URL}/api/products/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       
-      return { 
-        success: true, 
-        message: response.data?.message || 'Producto eliminado correctamente' 
-      };
-    } catch (error: any) {
-      console.error(`Error deleting product ${id}:`, error);
+      return { success: true, message: 'Producto eliminado correctamente' };
+    } catch (error) {
+      console.error('Error deleting product:', error);
       
-      // Manejar diferentes tipos de errores
-      if (error.response) {
-        // El servidor respondió con un código de estado fuera del rango 2xx
-        const errorMessage = error.response.data?.error || 'Error al eliminar el producto';
+      if (axios.isAxiosError(error) && error.response) {
+        const errorMessage = error.response.data?.message || 'Error al eliminar el producto';
         return { success: false, message: errorMessage };
-      } else if (error.request) {
-        // La solicitud se hizo pero no se recibió respuesta
-        return { success: false, message: 'No se recibió respuesta del servidor' };
-      } else {
-        // Algo sucedió al configurar la solicitud
-        return { success: false, message: 'Error al procesar la solicitud' };
       }
+      
+      return { success: false, message: 'Error al conectar con el servidor' };
+    }
+  },
+  
+  // Import products from CSV
+  async importProductsFromCsv(file: File): Promise<ImportResult> {
+    try {
+      const token = authService.getToken();
+      
+      if (!token) {
+        throw new Error('No autorizado');
+      }
+      
+      console.log('Preparando archivo para envío:', file.name, file.type, file.size);
+      
+      // Crear un FormData para enviar el archivo
+      const formData = new FormData();
+      formData.append('file', file, file.name); // Asegurarnos de incluir el nombre del archivo
+      
+      // Verificar que el FormData se creó correctamente
+      console.log('FormData creado, contiene:', Array.from(formData.entries()).map(entry => {
+        if (entry[1] instanceof File) {
+          return `${entry[0]}: File(${(entry[1] as File).name}, ${(entry[1] as File).size} bytes)`;
+        }
+        return `${entry[0]}: ${entry[1]}`;
+      }));
+      
+      // Configurar la solicitud con los headers correctos
+      // IMPORTANTE: No establecer Content-Type manualmente, axios lo hará automáticamente con el boundary correcto
+      const response = await axios.post(`${API_URL}/api/import/products`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Dejar que axios configure el Content-Type automáticamente
+        }
+      });
+      
+      console.log('Respuesta del servidor:', response.status, response.data);
+
+      return response.data.data;
+    } catch (error) {
+      console.error('Error importing products:', error);
+      
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Error de respuesta:', error.response.status, error.response.data);
+        const errorMessage = error.response.data?.message || 'Error al importar productos';
+        throw new Error(errorMessage);
+      }
+      
+      throw new Error('Error al conectar con el servidor');
+    }
+  },
+  
+  // Download CSV template
+  async downloadCsvTemplate(): Promise<void> {
+    try {
+      const token = authService.getToken();
+      
+      if (!token) {
+        throw new Error('No autorizado');
+      }
+      
+      const response = await axios.get(`${API_URL}/api/import/products/template`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        responseType: 'blob'
+      });
+      
+      // Crear un objeto URL para el blob
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      
+      // Crear un enlace para descargar el archivo
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'plantilla_productos.csv');
+      document.body.appendChild(link);
+      
+      // Simular clic para iniciar la descarga
+      link.click();
+      
+      // Limpiar
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      
+      if (axios.isAxiosError(error) && error.response) {
+        const errorMessage = error.response.data?.message || 'Error al descargar la plantilla';
+        throw new Error(errorMessage);
+      }
+      
+      throw new Error('Error al conectar con el servidor');
     }
   },
   
