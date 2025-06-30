@@ -135,6 +135,26 @@
   gap: 15px;
 }
 
+.paginationControls.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 10px;
+}
+
+.topActions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
 .limitSelector {
   display: flex;
   align-items: center;

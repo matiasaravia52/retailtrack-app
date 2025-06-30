@@ -8,6 +8,7 @@ import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input from '@/components/Input';
 import ImageUpload from '@/components/ImageUpload';
+import ImportProductsModal from '@/components/ImportProductsModal';
 import { productService, Product as ProductType, ProductStatus, ProductFilters, PaginatedResult } from '@/services/productService';
 import { categoryService, Category } from '@/services/categoryService';
 import styles from './page.module.css';
@@ -63,6 +64,8 @@ export default function Products() {
   const [error, setError] = useState<string | null>(null);
   // Estado para manejar errores de categorías
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  // Estado para controlar la visibilidad del modal de importación
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Cargar productos al montar el componente y cuando cambien los filtros
   useEffect(() => {
@@ -511,6 +514,20 @@ export default function Products() {
       ) : (
         <>
           <div className={styles.header}>
+            <div className={styles.actionButtons}>
+              <Button 
+                onClick={() => setShowForm(true)} 
+                variant="primary"
+              >
+                Nuevo Producto
+              </Button>
+              <Button 
+                onClick={() => setShowImportModal(true)} 
+                variant="secondary"
+              >
+                Importar CSV
+              </Button>
+            </div>
             <div className={styles.searchContainer}>
               <input 
                 type="text" 
@@ -698,6 +715,19 @@ export default function Products() {
               </div>
             </Card>
           )}
+          
+          {/* Modal de importación de productos */}
+          <ImportProductsModal 
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            onImportSuccess={() => {
+              // Recargar la lista de productos después de una importación exitosa
+              setFilters({
+                ...filters,
+                page: 1 // Volver a la primera página para ver los nuevos productos
+              });
+            }}
+          />
       </>
     )}
     </DashboardLayout>
