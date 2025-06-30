@@ -201,8 +201,68 @@ export const cancelSale = async (id: string): Promise<{ success: boolean; data?:
     }
 
     return { success: true, data: result.data };
-  } catch (error) {
-    console.error('Error en el servicio de cancelación de venta:', error);
-    return { success: false, error: 'Error al conectar con el servidor' };
+  } catch (err) {
+    console.error('Error al cancelar venta:', err);
+    return { success: false, error: 'Error de conexión' };
+  }
+};
+
+// Exportar ventas a CSV
+export const exportSalesToCSV = async (filters: SaleFilters = {}): Promise<void> => {
+  try {
+    const token = authService.getToken();
+    if (!token) {
+      throw new Error('No autorizado');
+    }
+
+    // Construir la URL con los parámetros de filtro
+    let url = `${API_URL}/api/sales/export/csv`;
+    const queryParams = [];
+    
+    if (filters.clientName) queryParams.push(`clientName=${encodeURIComponent(filters.clientName)}`);
+    if (filters.status) queryParams.push(`status=${encodeURIComponent(filters.status)}`);
+    if (filters.saleType) queryParams.push(`saleType=${encodeURIComponent(filters.saleType)}`);
+    if (filters.startDate) queryParams.push(`startDate=${encodeURIComponent(filters.startDate)}`);
+    if (filters.endDate) queryParams.push(`endDate=${encodeURIComponent(filters.endDate)}`);
+    
+    if (queryParams.length > 0) {
+      url += `?${queryParams.join('&')}`;
+    }
+
+    // Realizar la solicitud para descargar el CSV
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al exportar ventas');
+    }
+
+    // Obtener el contenido del CSV
+    const csvContent = await response.text();
+    
+    // Crear un objeto Blob con el contenido CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    // Crear un enlace para descargar el archivo
+    const url_download = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url_download;
+    link.setAttribute('download', `ventas_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    
+    // Simular clic para iniciar la descarga
+    link.click();
+    
+    // Limpiar
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url_download);
+  } catch (err) {
+    console.error('Error al exportar ventas a CSV:', err);
+    alert(`Error al exportar ventas: ${err instanceof Error ? err.message : 'Error desconocido'}`);
   }
 };

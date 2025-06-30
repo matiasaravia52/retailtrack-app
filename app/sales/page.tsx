@@ -8,7 +8,7 @@ import Card from '@/components/Card';
 import Table from '@/components/Table';
 import Input, { Select } from '@/components/Input';
 import styles from './page.module.css';
-import { createSale, getSales, cancelSale, Sale, SaleData, SaleItemData } from '@/services/saleService';
+import { createSale, getSales, cancelSale, exportSalesToCSV, Sale, SaleData, SaleItemData } from '@/services/saleService';
 import { authService } from '@/services/authService';
 import { productService } from '@/services/productService';
 import { customerService, Customer } from '@/services/customerService';
@@ -891,6 +891,24 @@ export default function Sales() {
                 onChange={handleSearchChange}
                 className={styles.searchInput}
               />
+              <div className={styles.exportButton}>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    // Exportar ventas con los filtros actuales
+                    const filters = {
+                      clientName: clientFilter,
+                      status: statusFilter,
+                      saleType: dateFilter === 'custom' ? undefined : dateFilter,
+                      startDate: startDate || undefined,
+                      endDate: endDate || undefined
+                    };
+                    exportSalesToCSV(filters);
+                  }}
+                >
+                  Exportar CSV
+                </Button>
+              </div>
               <Button onClick={() => setShowForm(true)}>Nueva Venta</Button>
             </div>
           </div>

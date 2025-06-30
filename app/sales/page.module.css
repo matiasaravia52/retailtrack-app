@@ -9,7 +9,11 @@
   display: flex;
   gap: 0.5rem;
   width: 100%;
-  max-width: 400px;
+  max-width: 600px;
+}
+
+.exportButton {
+  margin-right: 10px;
 }
 
 .searchInput {
